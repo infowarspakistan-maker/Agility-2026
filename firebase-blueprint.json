@@ -1,0 +1,128 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and roles.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "phoneNumber": { "type": "string" },
+        "address": { "type": "string" },
+        "passportCopyUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Package": {
+      "title": "Travel Package",
+      "description": "Details for Umrah, Haj, Visa, or Domestic tours.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["umrah", "haj", "visa", "domestic-group", "domestic-private"] },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "category": { "type": "string" },
+        "duration": { "type": "string" },
+        "itinerary": { "type": "array", "items": { "type": "string" } },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "inventoryCount": { "type": "integer" },
+        "isTrending": { "type": "boolean" },
+        "featured": { "type": "boolean" }
+      },
+      "required": ["title", "type", "price"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "A travel booking made by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "packageId": { "type": "string" },
+        "packageName": { "type": "string" },
+        "packageType": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"] },
+        "paymentStatus": { "type": "string", "enum": ["unpaid", "partial", "paid"] },
+        "paymentMethod": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "bookingDate": { "type": "string", "format": "date-time" },
+        "passengers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "passportNumber": { "type": "string" },
+              "age": { "type": "integer" }
+            }
+          }
+        },
+        "notes": { "type": "string" }
+      },
+      "required": ["userId", "packageId", "status", "paymentStatus"]
+    },
+    "VisaRequest": {
+      "title": "Visa Request",
+      "description": "Specific request for visa services.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "visaType": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "processing", "approved", "rejected"] },
+        "passportCopyUrl": { "type": "string" },
+        "submissionDate": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" }
+      },
+      "required": ["userId", "visaType", "status"]
+    },
+    "Review": {
+      "title": "Customer Review",
+      "description": "Feedback and ratings for packages.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "packageId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "integer" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["packageId", "userId", "rating"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles managed by Firebase Auth UID."
+    },
+    "/packages/{packageId}": {
+      "schema": "Package",
+      "description": "Available travel packages."
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "User bookings."
+    },
+    "/visaRequests/{requestId}": {
+      "schema": "VisaRequest",
+      "description": "Visa application requests."
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Public reviews for packages."
+    },
+    "/admins/{userId}": {
+      "schema": { "type": "object", "properties": { "active": { "type": "boolean" }, "email": { "type": "string" } } },
+      "description": "Administrative permission markers."
+    }
+  }
+}

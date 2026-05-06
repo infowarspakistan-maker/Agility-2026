@@ -1,0 +1,13 @@
+{
+  "name": "Agility Travels",
+  "description": "A high-performance travel management ecosystem for Umrah, Haj, and Domestic Pakistan tours. Features real-time booking, automated fulfillment workflows, and an advanced administrative intelligence dashboard.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "Firebase",
+    "Full-Stack",
+    "Generative AI"
+  ]
+}

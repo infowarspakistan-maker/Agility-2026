@@ -24,6 +24,7 @@ export interface UserProfile {
   phoneNumber?: string;
   address?: string;
   passportCopyUrl?: string;
+  idCardUrl?: string;
   createdAt: string;
 }
 
@@ -50,6 +51,8 @@ export interface Booking {
   bookingDate: string;
   passengers: Passenger[];
   notes?: string;
+  passportUrl?: string;
+  idCardUrl?: string;
 }
 
 export interface VisaRequest {
@@ -65,9 +68,30 @@ export interface VisaRequest {
 export interface Review {
   id: string;
   packageId: string;
+  packageName: string;
   userId: string;
   userName: string;
+  userEmail: string;
   rating: number;
   comment: string;
   createdAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  text: string;
+  senderId: string;
+  senderName: string;
+  timestamp: any;
+  isAdmin: boolean;
+}
+
+export interface ChatSession {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  lastMessage: string;
+  updatedAt: any;
+  unreadCount: number;
 }

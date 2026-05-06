@@ -7,12 +7,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   User, Mail, Phone, MapPin, Package, LogOut, ChevronRight, 
   Clock, CheckCircle2, ShieldCheck, FileText, Users, Edit3, 
-  Save, X, Upload, Globe, XCircle, Info, AlertTriangle
+  Save, X, Upload, Globe, XCircle, Info, AlertTriangle, Loader2
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/src/lib/firebase';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = process.env.VITE_STRIPE_PUBLISHABLE_KEY ? loadStripe(process.env.VITE_STRIPE_PUBLISHABLE_KEY) : null;
 
 export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -20,9 +23,11 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [visaRequests, setVisaRequests] = useState<VisaRequest[]>([]);
   const [isUploadingPassport, setIsUploadingPassport] = useState(false);
+  const [isUploadingID, setIsUploadingID] = useState(false);
   const [isRequestingVisa, setIsRequestingVisa] = useState(false);
   const [visaType, setVisaType] = useState('Umrah Visa');
   const [isEditing, setIsEditing] = useState(false);
+  const [paying, setPaying] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     displayName: '',
     phoneNumber: '',
@@ -40,6 +45,21 @@ export default function Profile() {
       }
 
       try {
+        // Handle payment success redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentStatus = urlParams.get('payment');
+        const bookingId = urlParams.get('bookingId');
+
+        if (paymentStatus === 'success' && bookingId) {
+          const bookingRef = doc(db, 'bookings', bookingId);
+          await updateDoc(bookingRef, {
+            paymentStatus: 'paid',
+            status: 'confirmed'
+          });
+          // Remove query params
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
         const userRef = doc(db, 'users', auth.currentUser.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -72,6 +92,42 @@ export default function Profile() {
     }
     load();
   }, []);
+
+  const handlePayment = async (booking: Booking) => {
+    setPaying(booking.id);
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: booking.totalAmount,
+          packageName: booking.packageName,
+          bookingId: booking.id,
+          userEmail: auth.currentUser?.email
+        }),
+      });
+
+      const session = await response.json();
+      if (session.error) throw new Error(session.error);
+
+      const stripe = await stripePromise;
+      if (stripe) {
+        const { error } = await stripe.redirectToCheckout({
+          sessionId: session.id,
+        });
+        if (error) throw error;
+      } else {
+        // Fallback for missing stripe key in dev
+        alert("Stripe is not configured. Simulating success...");
+        window.location.href = `${window.location.origin}/profile?payment=success&bookingId=${booking.id}`;
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Payment failed to initialize');
+    } finally {
+      setPaying(null);
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!auth.currentUser || !profile) return;
@@ -127,6 +183,28 @@ export default function Profile() {
     }
   };
 
+  const handleIDCardUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+
+    setIsUploadingID(true);
+    try {
+      const storageRef = ref(storage, `id_cards/${auth.currentUser.uid}-${Date.now()}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, { idCardUrl: downloadURL });
+      
+      setProfile(prev => prev ? { ...prev, idCardUrl: downloadURL } : null);
+    } catch (error) {
+      console.error(error);
+      alert('Failed to upload ID card');
+    } finally {
+      setIsUploadingID(false);
+    }
+  };
+
   const handleSubmitVisaRequest = async () => {
     if (!auth.currentUser || !profile?.passportCopyUrl) {
       alert('Please upload your passport first');
@@ -168,6 +246,48 @@ export default function Profile() {
 
   return (
     <div className="pt-32 pb-20 px-4 max-w-7xl mx-auto">
+      {/* Verification Banner */}
+      {!auth.currentUser?.emailVerified && !verificationSent && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10 p-6 bg-orange-50 border border-orange-100 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200/20 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+          <div className="flex items-center space-x-5 relative z-10">
+            <div className="w-14 h-14 bg-orange-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+              <AlertTriangle size={28} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-900">Email Verification Pending</h3>
+              <p className="text-slate-500 text-sm font-medium">Unlock full platform privileges by verifying your primary communication channel.</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleSendVerification}
+            className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm tracking-tight hover:bg-orange-500 transition-all shadow-xl shadow-slate-900/10 relative z-10 whitespace-nowrap"
+          >
+            Send Verification Link
+          </button>
+        </motion.div>
+      )}
+
+      {verificationSent && (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mb-10 p-6 bg-emerald-50 border border-emerald-100 rounded-[2rem] flex items-center space-x-5"
+        >
+          <div className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <CheckCircle2 size={28} />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-slate-900">Verification Link Transmitted</h3>
+            <p className="text-slate-500 text-sm font-medium">Please check your inbox (and spam folder) to complete the authentication cycle.</p>
+          </div>
+        </motion.div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Sidebar: Profile Info */}
         <div className="lg:col-span-4 space-y-8">
@@ -337,6 +457,32 @@ export default function Profile() {
                        onChange={handlePassportUpload} 
                      />
                   </div>
+                  <div className="relative">
+                     <button 
+                       disabled={isUploadingID}
+                       onClick={() => document.getElementById('id-upload')?.click()}
+                       className="w-full flex justify-between items-center p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-all group disabled:opacity-50"
+                     >
+                        <div className="flex items-center space-x-3">
+                           <FileText size={18} className="text-orange-400" />
+                           <span className="text-sm font-medium">{profile?.idCardUrl ? 'Update ID Card' : 'Upload ID Card'}</span>
+                        </div>
+                        {isUploadingID ? (
+                          <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                        ) : profile?.idCardUrl ? (
+                          <CheckCircle2 size={16} className="text-emerald-500" />
+                        ) : (
+                          <Upload size={16} className="text-white/20 group-hover:text-white" />
+                        )}
+                     </button>
+                     <input 
+                       id="id-upload" 
+                       type="file" 
+                       className="hidden" 
+                       accept="image/*,.pdf" 
+                       onChange={handleIDCardUpload} 
+                     />
+                  </div>
                   <button 
                     onClick={() => setIsRequestingVisa(true)}
                     className="w-full flex justify-between items-center p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-all group"
@@ -414,7 +560,26 @@ export default function Profile() {
 
                         <div className="text-left md:text-right flex flex-col items-start md:items-end">
                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Total Fulfilled</p>
-                           <p className="text-3xl font-black text-slate-900">{formatCurrency(booking.totalAmount)}</p>
+                           <p className="text-3xl font-black text-slate-900 mb-4">{formatCurrency(booking.totalAmount)}</p>
+                           {booking.paymentStatus !== 'paid' && (
+                             <button 
+                               onClick={() => handlePayment(booking)}
+                               disabled={paying === booking.id}
+                               className="w-full md:w-auto px-6 py-3 bg-orange-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center space-x-2 disabled:opacity-50 mb-4"
+                             >
+                               {paying === booking.id ? (
+                                 <><Loader2 size={14} className="animate-spin" /><span>Processing...</span></>
+                               ) : (
+                                 <><ShieldCheck size={14} /><span>Secure Pay Now</span></>
+                               )}
+                             </button>
+                           )}
+                           {booking.paymentStatus === 'paid' && (
+                             <div className="flex items-center space-x-2 text-emerald-500 bg-emerald-50 px-4 py-2 rounded-xl mb-4 font-bold text-[10px] uppercase tracking-widest">
+                                <CheckCircle2 size={14} />
+                                <span>Payment Verified</span>
+                             </div>
+                           )}
                            <button className="mt-4 text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] flex items-center space-x-1 group-hover:translate-x-1 transition-transform">
                               <span>Intelligence View</span>
                               <ChevronRight size={14} />

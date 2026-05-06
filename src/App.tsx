@@ -7,6 +7,7 @@ import { UserProfile } from '@/src/types';
 
 import Navbar from '@/src/components/layout/Navbar';
 import Footer from '@/src/components/layout/Footer';
+import VisaConsultant from '@/src/components/VisaConsultant';
 import Home from '@/src/pages/Home';
 import Packages from '@/src/pages/Packages';
 import PackageDetails from '@/src/pages/PackageDetails';
@@ -46,9 +47,9 @@ export default function App() {
           }
           setProfile(profileData);
         } else if (u.email === 'almalikaewan@gmail.com') {
-          const newProfile = {
+          const newProfile: UserProfile = {
             uid: u.uid,
-            email: u.email,
+            email: u.email || '',
             displayName: u.displayName || 'Head Admin',
             role: 'admin',
             createdAt: new Date().toISOString()
@@ -101,6 +102,7 @@ export default function App() {
         <div className="mt-auto">
           <Footer />
         </div>
+        <VisaConsultant />
       </div>
     </Router>
   );

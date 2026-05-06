@@ -3,10 +3,12 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { Resend } from 'resend';
 import dotenv from 'dotenv';
+import Stripe from 'stripe';
 
 dotenv.config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 async function startServer() {
   const app = express();
@@ -15,6 +17,45 @@ async function startServer() {
   app.use(express.json());
 
   // API routes
+  app.post("/api/create-checkout-session", async (req, res) => {
+    if (!stripe) {
+      return res.status(500).json({ error: "Stripe is not configured" });
+    }
+
+    const { amount, packageName, bookingId, userEmail } = req.body;
+
+    try {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'pkr',
+              product_data: {
+                name: packageName,
+                description: `Booking ID: ${bookingId}`,
+              },
+              unit_amount: amount * 100, // Stripe expects amounts in cents
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${req.headers.origin}/profile?payment=success&bookingId=${bookingId}`,
+        cancel_url: `${req.headers.origin}/profile?payment=cancelled`,
+        customer_email: userEmail,
+        metadata: {
+          bookingId: bookingId
+        }
+      });
+
+      res.json({ id: session.id });
+    } catch (error) {
+      console.error("Stripe Error:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
   app.post("/api/notify", async (req, res) => {
     const { email, subject, message } = req.body;
     

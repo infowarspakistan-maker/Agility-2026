@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { Search, MapPin, Calendar, Users, ArrowRight, Shield, Star, CheckCircle2, Plane, Landmark, Compass, ShieldCheck, Map } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/src/lib/utils';
 import { useState, useEffect } from 'react';
 import { packageService } from '@/src/services/api';
@@ -14,6 +15,7 @@ const CATEGORIES = [
 ];
 
 export default function Home() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('packages');
   const [featuredPackages, setFeaturedPackages] = useState<TravelPackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,14 +57,14 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1 }}
           >
-            <span className="inline-block px-4 py-1.5 bg-orange-500 text-white text-xs font-bold tracking-widest uppercase rounded-full mb-6">
+            <span className="inline-block px-4 py-1.5 bg-orange-500 text-white text-[10px] font-black tracking-[0.2em] uppercase rounded-full mb-6">
               Experience the Extraordinary
             </span>
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              Spiritual Journeys & <br /> <span className="text-orange-500">Scenic Escapes</span>
+            <h1 className="text-5xl md:text-8xl font-black text-white mb-8 leading-[0.95] tracking-tighter">
+              {t('hero.title')} <br /> <span className="text-orange-500 italic">AL-MALIK</span>
             </h1>
-            <p className="text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-auto">
-              Premium travel agency in Lahore specializing in Umrah, Haj, and bespoke tours across Pakistan's breathtaking landscapes.
+            <p className="text-lg md:text-2xl text-white/90 mb-12 max-w-2xl mx-auto font-medium leading-relaxed">
+              {t('hero.description')}
             </p>
 
             {/* Search Bar */}

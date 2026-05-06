@@ -2,13 +2,16 @@ import { Link, useLocation } from 'react-router-dom';
 import { Plane, Ship, Map, ShieldCheck, User, Menu, X, Landmark, Briefcase, Settings } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/src/lib/utils';
 import { auth, db } from '@/src/lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { UserProfile } from '@/src/types';
+import LanguageSwitcher from '@/src/components/LanguageSwitcher';
 
 export default function Navbar() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -39,11 +42,9 @@ export default function Navbar() {
   }, []);
 
   const navLinks = [
-    { name: 'Umrah', href: '/packages/umrah', icon: Landmark },
-    { name: 'Haj', href: '/packages/haj', icon: Landmark },
-    { name: 'Domestic Tours', href: '/packages/domestic-group', icon: Map },
-    { name: 'Visa Services', href: '/packages/visa', icon: ShieldCheck },
-    { name: 'About', href: '/about', icon: Briefcase },
+    { name: t('nav.home'), href: '/', icon: Landmark },
+    { name: t('nav.packages'), href: '/packages', icon: Landmark },
+    { name: t('nav.visas'), href: '/packages/visa', icon: ShieldCheck },
   ];
 
   return (
@@ -63,47 +64,58 @@ export default function Navbar() {
               "text-2xl font-bold tracking-tight",
               isScrolled ? "text-slate-900" : "text-white drop-shadow-md"
             )}>
-              Agility <span className="text-orange-500">Travels</span>
+              Al-Malik <span className="text-orange-500">Travels</span>
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-6">
             {navLinks.map((link) => (
               <Link
-                key={link.name}
+                key={link.href}
                 to={link.href}
                 className={cn(
-                  "text-sm font-medium transition-colors hover:text-orange-500",
+                  "text-sm font-bold transition-colors hover:text-orange-500 uppercase tracking-widest",
                   isScrolled ? "text-slate-600" : "text-white/90 hover:text-white"
                 )}
               >
                 {link.name}
               </Link>
             ))}
-            <div className="h-6 w-px bg-slate-200 mx-2" />
+            
+            <div className="h-6 w-px bg-slate-200/20 mx-2" />
+            
+            <LanguageSwitcher light={!isScrolled} />
+
             {role === 'admin' && (
-              <Link to="/admin" className="p-2 text-slate-400 hover:text-orange-500 transition-colors">
+              <Link to="/admin" className={cn(
+                "p-2 transition-colors",
+                isScrolled ? "text-slate-400 hover:text-orange-500" : "text-white/60 hover:text-white"
+              )}>
                 <Settings size={20} />
               </Link>
             )}
             {user ? (
               <Link to="/profile" className={cn(
-                "flex items-center space-x-2 px-4 py-2 rounded-full transition-all",
+                "flex items-center space-x-2 px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-orange-500/10",
                 role === 'admin' ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-orange-500 text-white hover:bg-orange-600"
               )}>
                 <User size={18} />
-                <span className="text-sm font-medium">Dashboard</span>
+                <span className="text-xs font-black uppercase tracking-widest">{t('nav.admin')}</span>
               </Link>
             ) : (
-              <Link to="/login" className="text-sm font-medium text-white bg-slate-900 px-6 py-2 rounded-full hover:bg-slate-800 transition-colors">
-                Sign In
+              <Link to="/login" className={cn(
+                "text-xs font-black uppercase tracking-widest px-6 py-3 rounded-xl transition-all shadow-xl",
+                isScrolled ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-white text-slate-900 hover:bg-orange-500 hover:text-white"
+              )}>
+                {t('nav.login')}
               </Link>
             )}
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center space-x-4">
+            <LanguageSwitcher light={!isScrolled} />
             <button
               onClick={() => setIsOpen(!isOpen)}
               className={cn(
@@ -129,9 +141,9 @@ export default function Navbar() {
             <div className="px-4 pt-2 pb-6 space-y-2">
               {navLinks.map((link) => (
                 <Link
-                  key={link.name}
+                  key={link.href}
                   to={link.href}
-                  className="block px-3 py-4 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg flex items-center space-x-3"
+                  className="block px-3 py-4 text-base font-bold text-slate-700 hover:bg-slate-50 rounded-2xl flex items-center space-x-3 uppercase tracking-widest"
                   onClick={() => setIsOpen(false)}
                 >
                   <link.icon size={20} className="text-orange-500" />
@@ -142,27 +154,27 @@ export default function Navbar() {
                 {role === 'admin' && (
                   <Link
                     to="/admin"
-                    className="block w-full text-center px-6 py-3 bg-slate-900 text-white rounded-xl font-medium"
+                    className="block w-full text-center px-6 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs"
                     onClick={() => setIsOpen(false)}
                   >
-                    Admin Control Center
+                    Control Center
                   </Link>
                 )}
                 {user ? (
                   <Link
                     to="/profile"
-                    className="block w-full text-center px-6 py-3 bg-orange-500 text-white rounded-xl font-medium"
+                    className="block w-full text-center px-6 py-4 bg-orange-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs"
                     onClick={() => setIsOpen(false)}
                   >
-                    My Profile
+                    {t('nav.admin')}
                   </Link>
                 ) : (
                   <Link
                     to="/login"
-                    className="block w-full text-center px-6 py-3 bg-slate-900 text-white rounded-xl font-medium"
+                    className="block w-full text-center px-6 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs"
                     onClick={() => setIsOpen(false)}
                   >
-                    Sign In
+                    {t('nav.login')}
                   </Link>
                 )}
               </div>

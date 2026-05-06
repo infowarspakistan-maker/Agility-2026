@@ -26,6 +26,7 @@
 | **Booking** | `/bookings/{id}` | Transaction records linking users to specific packages. |
 | **VisaRequest**| `/visaRequests/{id}`| Specialized workflow for visa service applications. |
 | **Admin** | `/admins/{uid}` | Strict security marker for administrative privilege verification. |
+| **Log** | `/aiLogs/{id}` | Audit trail for AI document extractions and model performance. |
 
 ### Relationships
 - **One-to-Many**: A `User` can have multiple `Bookings`.
@@ -46,7 +47,9 @@
 
 ### B. Traveler Journey
 - **Discovery**: Responsive landing page with featured Umrah and trending domestic packages.
-- **Reservation**: Multi-step booking process including passenger details.
+- **AI-Powered Booking**: Passport OCR extraction using Gemini 3 Flash to auto-populate passenger manifests.
+- **Smart Visa Consultant**: AI Chat specialized in visa regulations and travel document auditing.
+- **Reservation**: Multi-step booking process with real-time total calculation.
 - **Dashboard**: Personal area to track booking status (Pending -> Confirmed -> Completed).
 
 ### C. Admin Intelligence Suite
@@ -75,6 +78,11 @@ npm run lint    # Checks for type safety and code quality
 ---
 
 ## 6. Future Roadmap
+- [x] **AI Passenger Extraction**: OCR integration for frictionless booking (Gemini 3 Flash).
+- [x] **Intelligence Pulse**: Real-time observability dashboard for system events.
+- [x] **Smart Visa Consultant**: AI Chat for real-time document and regulation guidance.
+- [x] **Manual Visa Entry**: Admin capability to initialize visa protocols for travelers.
+- [x] **Global Localisation**: Triple-engine translation (EN/UR/AR) with RTL support.
 - [ ] **AI Itinerary Generator**: Smart suggestions based on traveler history.
 - [ ] **Payment Gateway**: Integration with local wallets (EasyPaisa/JazzCash).
 - [ ] **Real-time Chat**: Direct support line between travelers and agents.

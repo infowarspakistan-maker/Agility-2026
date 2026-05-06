@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db, auth } from '@/src/lib/firebase';
 import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { TravelPackage, Booking, Passenger } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark } from 'lucide-react';
+import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
+import { extractPassengerFromPassport } from '@/src/services/aiService';
 
 export default function PackageDetails() {
   const { id } = useParams<{ id: string }>();
@@ -14,10 +15,14 @@ export default function PackageDetails() {
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [scanningIndex, setScanningIndex] = useState<number | null>(null);
+  const scanInputRef = useRef<HTMLInputElement>(null);
   
   // Form State
   const [passengers, setPassengers] = useState<Passenger[]>([{ name: '', passportNumber: '', age: 0 }]);
   const [paymentMethod, setPaymentMethod] = useState('bank');
+  const [passportFile, setPassportFile] = useState<File | null>(null);
+  const [idCardFile, setIdCardFile] = useState<File | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -48,6 +53,41 @@ export default function PackageDetails() {
     setPassengers(updated);
   };
 
+  const handleAIScan = async (index: number, e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setScanningIndex(index);
+    
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]); // Only data part
+        };
+      });
+      reader.readAsDataURL(file);
+      const base64 = await base64Promise;
+
+      const result = await extractPassengerFromPassport(base64, file.type);
+      if (result) {
+        handlePassengerChange(index, 'name', result.name);
+        handlePassengerChange(index, 'passportNumber', result.passportNumber);
+        handlePassengerChange(index, 'age', result.age);
+      } else {
+        alert("AI could not extract details. Please enter manually.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Extraction failed.");
+    } finally {
+      setScanningIndex(null);
+      if (e.target) e.target.value = '';
+    }
+  };
+
   const handleBookingSubmit = async () => {
     if (!auth.currentUser || !pkg) {
       alert("Please sign in to book a package");
@@ -57,6 +97,25 @@ export default function PackageDetails() {
 
     setBookingLoading(true);
     try {
+      let passportUrl = '';
+      let idCardUrl = '';
+
+      if (passportFile) {
+        const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+        const { storage } = await import('@/src/lib/firebase');
+        const passRef = ref(storage, `bookings/passports/${auth.currentUser.uid}-${Date.now()}`);
+        const snap = await uploadBytes(passRef, passportFile);
+        passportUrl = await getDownloadURL(snap.ref);
+      }
+
+      if (idCardFile) {
+        const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+        const { storage } = await import('@/src/lib/firebase');
+        const idRef = ref(storage, `bookings/id_cards/${auth.currentUser.uid}-${Date.now()}`);
+        const snap = await uploadBytes(idRef, idCardFile);
+        idCardUrl = await getDownloadURL(snap.ref);
+      }
+
       const bookingData: Omit<Booking, 'id'> = {
         userId: auth.currentUser.uid,
         packageId: pkg.id,
@@ -68,7 +127,9 @@ export default function PackageDetails() {
         totalAmount: pkg.price * passengers.length,
         amountPaid: 0,
         bookingDate: new Date().toISOString(),
-        passengers: passengers
+        passengers: passengers,
+        passportUrl: passportUrl || undefined,
+        idCardUrl: idCardUrl || undefined
       };
 
       await addDoc(collection(db, 'bookings'), bookingData);
@@ -176,11 +237,34 @@ export default function PackageDetails() {
                  className="space-y-8"
                >
                   <h3 className="text-2xl font-bold">Passenger Details</h3>
+                  <div className="flex items-center space-x-2 p-4 bg-orange-50 border border-orange-100 rounded-2xl mb-6">
+                    <Sparkles className="text-orange-500 shrink-0" size={18} />
+                    <p className="text-xs font-semibold text-orange-800">
+                      Pro Tip: Save time by scanning your passport image. Our AI will extract your details automatically!
+                    </p>
+                  </div>
                   <div className="space-y-6">
                     {passengers.map((p, i) => (
                       <div key={i} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 relative group">
-                        <div className="absolute top-4 right-4 text-xs font-bold text-slate-300">#{i + 1}</div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="absolute top-4 right-4 flex items-center space-x-4">
+                           <button 
+                             disabled={scanningIndex !== null}
+                             onClick={() => {
+                               setScanningIndex(i);
+                               scanInputRef.current?.click();
+                             }}
+                             className="flex items-center space-x-2 text-[10px] font-black text-orange-500 px-3 py-1.5 bg-orange-50 rounded-lg hover:bg-orange-500 hover:text-white transition-all shadow-sm uppercase tracking-widest"
+                           >
+                             {scanningIndex === i ? (
+                               <Loader2 size={12} className="animate-spin" />
+                             ) : (
+                               <ScanFace size={12} />
+                             )}
+                             <span>{scanningIndex === i ? 'Scanning...' : 'Scan Passport'}</span>
+                           </button>
+                           <div className="text-xs font-bold text-slate-300">#{i + 1}</div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
                           <div>
                             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Full Name (As on Passport)</label>
                             <input 
@@ -226,6 +310,85 @@ export default function PackageDetails() {
                   >
                     + Add Another Passenger
                   </button>
+                  <input 
+                    ref={scanInputRef}
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={(e) => scanningIndex !== null && handleAIScan(scanningIndex, e)} 
+                  />
+
+                  <div className="pt-10 border-t border-slate-100 space-y-8">
+                     <h4 className="text-xl font-bold flex items-center">
+                        <ShieldCheck className="mr-3 text-orange-500" />
+                        Application Documents
+                     </h4>
+                     <p className="text-sm text-slate-500">Upload primary documents for this travel group. You can also add these later from your profile.</p>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Passport Copy</label>
+                           <div 
+                             className={cn(
+                               "relative w-full aspect-video rounded-3xl border-2 border-dashed flex flex-col items-center justify-center transition-all cursor-pointer",
+                               passportFile ? "border-emerald-500 bg-emerald-50" : "border-slate-200 hover:border-orange-500 bg-slate-50"
+                             )}
+                             onClick={() => document.getElementById('pass-up')?.click()}
+                           >
+                              {passportFile ? (
+                                <>
+                                  <CheckCircle2 size={32} className="text-emerald-500 mb-2" />
+                                  <p className="text-xs font-bold text-emerald-700">{passportFile.name}</p>
+                                  <p className="text-[10px] text-emerald-500 mt-1 uppercase font-bold">Document Locked</p>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload size={32} className="text-slate-300 mb-2" />
+                                  <p className="text-xs font-bold text-slate-400">Click to upload Passport</p>
+                                </>
+                              )}
+                              <input 
+                                id="pass-up" 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*,.pdf" 
+                                onChange={(e) => setPassportFile(e.target.files?.[0] || null)} 
+                              />
+                           </div>
+                        </div>
+
+                        <div className="space-y-3">
+                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID Card (Front/Back)</label>
+                           <div 
+                             className={cn(
+                               "relative w-full aspect-video rounded-3xl border-2 border-dashed flex flex-col items-center justify-center transition-all cursor-pointer",
+                               idCardFile ? "border-emerald-500 bg-emerald-50" : "border-slate-200 hover:border-orange-500 bg-slate-50"
+                             )}
+                             onClick={() => document.getElementById('id-up')?.click()}
+                           >
+                              {idCardFile ? (
+                                <>
+                                  <CheckCircle2 size={32} className="text-emerald-500 mb-2" />
+                                  <p className="text-xs font-bold text-emerald-700">{idCardFile.name}</p>
+                                  <p className="text-[10px] text-emerald-500 mt-1 uppercase font-bold">Document Locked</p>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload size={32} className="text-slate-300 mb-2" />
+                                  <p className="text-xs font-bold text-slate-400">Click to upload ID Card</p>
+                                </>
+                              )}
+                              <input 
+                                id="id-up" 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*,.pdf" 
+                                onChange={(e) => setIdCardFile(e.target.files?.[0] || null)} 
+                              />
+                           </div>
+                        </div>
+                     </div>
+                  </div>
                </motion.div>
              )}
 

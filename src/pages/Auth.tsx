@@ -6,8 +6,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ShieldCheck, Landmark, CheckCircle2 } from 'lucide-react';
 import { UserProfile } from '@/src/types';
+import { useToast } from '@/src/components/layout/ToastContext';
 
 export default function Auth() {
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -54,9 +56,9 @@ export default function Auth() {
     } catch (e: any) {
       console.error(e);
       if (e.code === 'auth/operation-not-allowed') {
-        alert("Google Sign-in is not enabled in Firebase Console. Please enable it in the Authentication > Sign-in method tab.");
+        toast.error("Google Sign-in is not enabled in Firebase Console. Please enable it in the Authentication > Sign-in method tab.");
       } else {
-        alert("Login failed. Please try again with your Google account.");
+        toast.error("Login failed. Please try again with your Google account.");
       }
     } finally {
       setLoading(false);

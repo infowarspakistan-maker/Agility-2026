@@ -98,7 +98,7 @@ export async function getVisaConsultation(message: string, history: any[] = []) 
       model: "gemini-3-flash-preview",
       history: history,
       config: {
-        systemInstruction: "You are the 'Smart Visa Consultant' for Al-Malik Travels. You specialize in Umrah visas, domestic travel in Pakistan, and travel document requirements. Be professional, direct, and helpful. Use Pakistani travel context where relevant."
+        systemInstruction: "You are the 'Smart Visa Consultant' for Agility Travels. You specialize in Umrah visas, domestic travel in Pakistan, and travel document requirements. Be professional, direct, and helpful. Use Pakistani travel context where relevant."
       }
     });
 
@@ -147,3 +147,43 @@ export async function generateItinerary(packageName: string, packageType: string
     return "Failed to generate itinerary automatically. Please draft one manually.";
   }
 }
+
+export async function generateExecutiveInsights(
+  bookingsCount: number,
+  totalRev: number,
+  packagesCount: number,
+  visasCount: number,
+  categoriesBreakdown: string
+): Promise<string> {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        {
+          parts: [
+            {
+              text: `You are the Lead Systems Intelligence AI at Agility Travels. Analyze these system metrics:
+              - Confirmed/Pending Bookings: ${bookingsCount}
+              - Total Dynamic/Base Revenue: PKR ${totalRev}
+              - Running Services & Packages: ${packagesCount}
+              - Active Visa Assistance Programs: ${visasCount}
+              - Services active inventory: ${categoriesBreakdown}
+              
+              Provide a professional, highly strategic Executive Summary containing:
+              1. **Market Signals**: Concise analysis of which category (Umrah, Study Abroad, EXPO, visa) is gaining traction based on inventory split and metrics.
+              2. **Operational Recommendations**: Concrete business suggestions (e.g. optimizing flight/transport block-allocations, cross-promoting high-conversion categories, offering bundled options like EXPO travelers requiring Visas).
+              3. **Predictive Performance Actionables**: Real-time suggestions to optimize booking completion rates.
+              
+              Format the output strictly as professionally styled clean markdown. Keep it high-impact and readable.`
+            }
+          ]
+        }
+      ]
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Insights generation error:", error);
+    return "Executive intelligence stream offline. Please verify settings and try again.";
+  }
+}
+

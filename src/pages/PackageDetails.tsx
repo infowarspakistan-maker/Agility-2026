@@ -7,8 +7,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { extractPassengerFromPassport } from '@/src/services/aiService';
+import { useToast } from '@/src/components/layout/ToastContext';
 
 export default function PackageDetails() {
+  const toast = useToast();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [pkg, setPkg] = useState<TravelPackage | null>(null);
@@ -76,12 +78,13 @@ export default function PackageDetails() {
         handlePassengerChange(index, 'name', result.name);
         handlePassengerChange(index, 'passportNumber', result.passportNumber);
         handlePassengerChange(index, 'age', result.age);
+        toast.success("Passenger details extracted successfully!");
       } else {
-        alert("AI could not extract details. Please enter manually.");
+        toast.error("AI could not extract details. Please enter manually.");
       }
     } catch (err) {
       console.error(err);
-      alert("Extraction failed.");
+      toast.error("Extraction failed.");
     } finally {
       setScanningIndex(null);
       if (e.target) e.target.value = '';
@@ -90,7 +93,7 @@ export default function PackageDetails() {
 
   const handleBookingSubmit = async () => {
     if (!auth.currentUser || !pkg) {
-      alert("Please sign in to book a package");
+      toast.error("Please sign in to book a package");
       navigate('/login');
       return;
     }
@@ -134,9 +137,10 @@ export default function PackageDetails() {
 
       await addDoc(collection(db, 'bookings'), bookingData);
       setStep(4); // Success
+      toast.success("Package booked successfully!");
     } catch (e) {
       console.error(e);
-      alert("Booking failed. Please check your connection.");
+      toast.error("Booking failed. Please check your connection.");
     } finally {
       setBookingLoading(false);
     }
@@ -159,7 +163,7 @@ export default function PackageDetails() {
         <div className="lg:col-span-8">
            <div className="mb-8">
               <div className="flex items-center space-x-2 text-orange-500 mb-3">
-                 <span className="text-[10px] uppercase font-bold tracking-[0.2em]">{pkg.type}</span>
+                 <span className="text-[10px] uppercase font-bold tracking-[0.2em]">{pkg.type?.replace('-', ' ')}</span>
                  <div className="w-1 h-1 bg-slate-200 rounded-full" />
                  <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-slate-400">{pkg.category}</span>
               </div>

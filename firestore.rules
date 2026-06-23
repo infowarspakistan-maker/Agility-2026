@@ -75,5 +75,20 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update, delete: if isAdmin() || (isSignedIn() && isOwner(resource.data.userId));
     }
+
+    // Chat Sessions
+    match /chatSessions/{sessionId} {
+      allow read, write: if isSignedIn() && (isOwner(sessionId) || isAdmin());
+      
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn() && (isOwner(sessionId) || isAdmin());
+      }
+    }
+
+    // AI Logs
+    match /aiLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+    }
   }
 }

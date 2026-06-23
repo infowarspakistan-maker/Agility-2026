@@ -3,8 +3,18 @@ import { useParams, Link } from 'react-router-dom';
 import { packageService } from '@/src/services/api';
 import { TravelPackage } from '@/src/types';
 import { motion } from 'motion/react';
-import { MapPin, Clock, Users, ArrowRight, Filter, Search } from 'lucide-react';
+import { MapPin, Clock, Users, ArrowRight, Filter, Search, Globe, Landmark, Map, Shield, Briefcase, GraduationCap } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+
+const CATEGORY_TABS = [
+  { id: 'all', name: 'All Services', path: '/packages/all', icon: Globe },
+  { id: 'umrah', name: 'Umrah', path: '/packages/umrah', icon: Landmark },
+  { id: 'haj', name: 'Haj 2026', path: '/packages/haj', icon: Landmark },
+  { id: 'domestic-group', name: 'Northern Pakistan', path: '/packages/domestic-group', icon: Map },
+  { id: 'visa', name: 'Visa Services', path: '/packages/visa', icon: Shield },
+  { id: 'expo', name: 'EXPO Deals', path: '/packages/expo', icon: Briefcase },
+  { id: 'study-abroad', name: 'Study Abroad', path: '/packages/study-abroad', icon: GraduationCap }
+];
 
 export default function Packages() {
   const { type } = useParams<{ type: string }>();
@@ -60,6 +70,29 @@ export default function Packages() {
              <span>Filter</span>
            </button>
         </div>
+      </div>
+
+      {/* Category Tabs Switcher */}
+      <div className="mb-12 overflow-x-auto pb-3 flex gap-2 border-b border-slate-100 no-scrollbar select-none">
+        {CATEGORY_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = type === tab.id || (tab.id === 'all' && (!type || type === 'all')) || (tab.id === 'domestic-group' && (type === 'domestic-group' || type === 'domestic-private'));
+          return (
+            <Link
+              key={tab.id}
+              to={tab.path}
+              className={cn(
+                "flex items-center space-x-2.5 px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all border",
+                isActive 
+                  ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/25" 
+                  : "bg-white text-slate-600 border-slate-100 hover:bg-slate-50 hover:text-slate-900"
+              )}
+            >
+              <Icon size={14} className={isActive ? "text-white animate-pulse" : "text-slate-400"} />
+              <span>{tab.name}</span>
+            </Link>
+          );
+        })}
       </div>
 
       {loading ? (

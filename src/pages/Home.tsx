@@ -1,5 +1,5 @@
-import { motion } from 'motion/react';
-import { Search, MapPin, Calendar, Users, ArrowRight, Shield, Star, CheckCircle2, Plane, Landmark, Compass, ShieldCheck, Map } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Search, MapPin, Calendar, Users, ArrowRight, Shield, Star, CheckCircle2, Plane, Landmark, Compass, ShieldCheck, Map, Briefcase, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/src/lib/utils';
@@ -10,8 +10,37 @@ import { TravelPackage } from '@/src/types';
 const CATEGORIES = [
   { id: 'umrah', title: 'Umrah', icon: Landmark, color: 'bg-emerald-500', img: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?auto=format&fit=crop&w=800&q=80', href: '/packages/umrah' },
   { id: 'haj', title: 'Haj 2026', icon: Landmark, color: 'bg-amber-500', img: 'https://images.unsplash.com/photo-1542640244-7e672d6cef21?auto=format&fit=crop&w=800&q=80', href: '/packages/haj' },
-  { id: 'domestic', title: 'Domestic Tours', icon: Compass, color: 'bg-sky-500', img: 'https://images.unsplash.com/photo-1581442111558-86d4e08c8e1e?auto=format&fit=crop&w=800&q=80', href: '/packages/domestic-group' },
+  { id: 'domestic', title: 'Northern Pakistan', icon: Compass, color: 'bg-sky-500', img: 'https://images.unsplash.com/photo-1581442111558-86d4e08c8e1e?auto=format&fit=crop&w=800&q=80', href: '/packages/domestic-group' },
   { id: 'visas', title: 'Visa Services', icon: Shield, color: 'bg-orange-500', img: 'https://images.unsplash.com/photo-1544027993-37dbfe43562a?auto=format&fit=crop&w=800&q=80', href: '/packages/visa' },
+  { id: 'expo', title: 'Global EXPO Deals', icon: Briefcase, color: 'bg-purple-600', img: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80', href: '/packages/expo' },
+  { id: 'study-abroad', title: 'Study Abroad Services', icon: GraduationCap, color: 'bg-rose-500', img: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80', href: '/packages/study-abroad' },
+];
+
+const HERO_SLIDES = [
+  {
+    tagline: 'Experience the Extraordinary',
+    title: 'Spiritual Journeys & Sacred Guides',
+    description: 'Premium custom Umrah & Haj 2026 packages. Tailored itineraries, luxury lodging close to Haram, and expert religious guidance.',
+    image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=2070&auto=format&fit=crop',
+    actionText: 'Explore Umrah Packages',
+    href: '/packages/umrah'
+  },
+  {
+    tagline: 'Global Pathways & Careers',
+    title: 'Study Abroad Services & Pathway Support',
+    description: 'Complete assistance for admission in top international universities, blocked bank accounts setup, documentation profiling, and high-success visa coaching.',
+    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop',
+    actionText: 'Explore Study Abroad',
+    href: '/packages/study-abroad'
+  },
+  {
+    tagline: 'Premier Business Engagement',
+    title: 'EXPO Passes & Corporate Sponsorship',
+    description: 'Secure premium delegate cards, B2B matchmaking invitations, prestigious pavilion access, and seamless corporate travel arrangements for trade exhibitions.',
+    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop',
+    actionText: 'Explore EXPO Deals',
+    href: '/packages/expo'
+  }
 ];
 
 export default function Home() {
@@ -20,6 +49,23 @@ export default function Home() {
   const [featuredPackages, setFeaturedPackages] = useState<TravelPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handlePrevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+  };
+
+  const handleNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+  };
 
   useEffect(() => {
     async function fetchFeatured() {
@@ -38,94 +84,141 @@ export default function Home() {
   return (
     <div className="relative">
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden py-24 md:py-32">
+        {/* Slide Carousel Backgrounds */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-slate-900/40 z-10" />
-          <motion.img 
-            initial={{ scale: 1.1 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 10, repeat: Infinity, repeatType: 'reverse' }}
-            src="https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=2070&auto=format&fit=crop" 
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
+          <div className="absolute inset-0 bg-slate-950/60 z-10" />
+          <AnimatePresence mode="wait">
+            <motion.img 
+              key={currentSlide}
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 1 }}
+              src={HERO_SLIDES[currentSlide].image} 
+              className="absolute inset-0 w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </AnimatePresence>
         </div>
 
-        <div className="relative z-20 max-w-7xl mx-auto px-4 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1 }}
-          >
-            <span className="inline-block px-4 py-1.5 bg-orange-500 text-white text-[10px] font-black tracking-[0.2em] uppercase rounded-full mb-6">
-              Experience the Extraordinary
-            </span>
-            <h1 className="text-5xl md:text-8xl font-black text-white mb-8 leading-[0.95] tracking-tighter">
-              {t('hero.title')} <br /> <span className="text-orange-500 italic">AL-MALIK</span>
-            </h1>
-            <p className="text-lg md:text-2xl text-white/90 mb-12 max-w-2xl mx-auto font-medium leading-relaxed">
-              {t('hero.description')}
-            </p>
-
-            {/* Search Bar */}
-            <div className="max-w-4xl mx-auto glass-card rounded-2xl p-2 md:p-4 border-white/30">
-              <div className="flex bg-white/10 rounded-xl overflow-hidden mb-4 p-1">
-                {['Packages', 'Visas', 'Hotels'].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab.toLowerCase())}
-                    className={cn(
-                      "flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all",
-                      activeTab === tab.toLowerCase() ? "bg-white text-slate-900" : "text-white hover:bg-white/10"
-                    )}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
+        <div className="relative z-20 max-w-7xl mx-auto px-4 w-full text-center">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentSlide}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -30 }}
+              transition={{ duration: 0.6 }}
+              className="flex flex-col items-center mb-8"
+            >
+              <span className="inline-block px-4 py-1.5 bg-orange-500 text-white text-[10px] font-black tracking-[0.2em] uppercase rounded-full mb-6 shadow-lg shadow-orange-500/25">
+                {HERO_SLIDES[currentSlide].tagline}
+              </span>
+              <h1 className="text-4xl md:text-7xl lg:text-8xl font-black text-white mb-6 leading-[0.95] tracking-tight max-w-5xl">
+                {HERO_SLIDES[currentSlide].title}
+              </h1>
+              <p className="text-sm md:text-lg lg:text-xl text-white/90 mb-8 max-w-3xl mx-auto font-medium leading-relaxed">
+                {HERO_SLIDES[currentSlide].description}
+              </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                <div className="bg-white/20 rounded-xl p-3 flex items-center space-x-3 text-left">
-                  <MapPin className="text-orange-400 w-5 h-5 flex-shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-white/60 font-bold uppercase">Destination</p>
-                    <input className="bg-transparent text-white border-none outline-none text-sm placeholder:text-white/40 w-full" placeholder="Where to go?" />
-                  </div>
-                </div>
-                <div className="bg-white/20 rounded-xl p-3 flex items-center space-x-3 text-left">
-                  <Calendar className="text-orange-400 w-5 h-5 flex-shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-white/60 font-bold uppercase">Departure</p>
-                    <button className="text-white text-sm">Select Date</button>
-                  </div>
-                </div>
-                <div className="bg-white/20 rounded-xl p-3 flex items-center space-x-3 text-left">
-                  <Users className="text-orange-400 w-5 h-5 flex-shrink-0" />
-                  <div>
-                    <p className="text-[10px] text-white/60 font-bold uppercase">Passengers</p>
-                    <button className="text-white text-sm">2 People</button>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => navigate('/packages/all')}
-                  className="h-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold flex items-center justify-center space-x-2 py-4 shadow-lg transition-all"
+              <div className="flex flex-wrap gap-4 justify-center">
+                <Link 
+                  to={HERO_SLIDES[currentSlide].href}
+                  className="px-8 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all flex items-center gap-2 group shadow-lg shadow-orange-500/25"
                 >
-                  <Search size={20} />
-                  <span>Search</span>
-                </button>
+                  <span>{HERO_SLIDES[currentSlide].actionText}</span>
+                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <Link 
+                  to="/packages/all"
+                  className="px-8 py-3.5 bg-white/15 hover:bg-white/25 text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all border border-white/20 hover:border-white/45 backdrop-blur-sm"
+                >
+                  View All Services
+                </Link>
               </div>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Search Bar */}
+          <div className="max-w-4xl mx-auto glass-card rounded-2xl p-2 md:p-4 border-white/30 backdrop-blur-md">
+            <div className="flex bg-white/10 rounded-xl overflow-hidden mb-4 p-1">
+              {['Packages', 'Visas', 'Hotels'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab.toLowerCase())}
+                  className={cn(
+                    "flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all",
+                    activeTab === tab.toLowerCase() ? "bg-white text-slate-900 shadow-sm" : "text-white hover:bg-white/10"
+                  )}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
-          </motion.div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+              <div className="bg-white/20 rounded-xl p-3 flex items-center space-x-3 text-left">
+                <MapPin className="text-orange-400 w-5 h-5 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] text-white/60 font-bold uppercase">Destination</p>
+                  <input className="bg-transparent text-white border-none outline-none text-sm placeholder:text-white/40 w-full" placeholder="Where to go?" />
+                </div>
+              </div>
+              <div className="bg-white/20 rounded-xl p-3 flex items-center space-x-3 text-left">
+                <Calendar className="text-orange-400 w-5 h-5 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] text-white/60 font-bold uppercase">Departure</p>
+                  <button className="text-white text-sm">Select Date</button>
+                </div>
+              </div>
+              <div className="bg-white/20 rounded-xl p-3 flex items-center space-x-3 text-left">
+                <Users className="text-orange-400 w-5 h-5 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] text-white/60 font-bold uppercase">Passengers</p>
+                  <button className="text-white text-sm">2 People</button>
+                </div>
+              </div>
+              <button 
+                onClick={() => navigate('/packages/all')}
+                className="h-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold flex items-center justify-center space-x-2 py-4 shadow-lg transition-all"
+              >
+                <Search size={20} />
+                <span>Search</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 hidden md:block">
-           <motion.div 
-             animate={{ y: [0, 10, 0] }}
-             transition={{ duration: 2, repeat: Infinity }}
-             className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center py-2"
-           >
-             <div className="w-1 h-2 bg-white rounded-full" />
-           </motion.div>
+        {/* Slide navigation controls */}
+        <button 
+          onClick={handlePrevSlide}
+          className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/20 hover:bg-black/40 text-white border border-white/10 hover:border-white/30 transition-all group backdrop-blur-sm"
+          aria-label="Previous Slide"
+        >
+          <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+        </button>
+        <button 
+          onClick={handleNextSlide}
+          className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/20 hover:bg-black/40 text-white border border-white/10 hover:border-white/30 transition-all group backdrop-blur-sm"
+          aria-label="Next Slide"
+        >
+          <ChevronRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
+        </button>
+
+        {/* Slide Indicators/Bullets */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+          {HERO_SLIDES.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentSlide(idx)}
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-300",
+                currentSlide === idx ? "w-6 bg-orange-500" : "w-1.5 bg-white/40 hover:bg-white/75"
+              )}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
         </div>
       </section>
 

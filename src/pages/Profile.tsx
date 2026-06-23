@@ -13,11 +13,11 @@ import { cn, formatCurrency } from '@/src/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/src/lib/firebase';
-import { loadStripe } from '@stripe/stripe-js';
-
-const stripePromise = process.env.VITE_STRIPE_PUBLISHABLE_KEY ? loadStripe(process.env.VITE_STRIPE_PUBLISHABLE_KEY) : null;
+import { authorizeGoogleSheets, exportPersonalItinerarySheet } from '@/src/services/googleSheetsService';
+import { useToast } from '@/src/components/layout/ToastContext';
 
 export default function Profile() {
+  const toast = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,6 @@ export default function Profile() {
   const [isRequestingVisa, setIsRequestingVisa] = useState(false);
   const [visaType, setVisaType] = useState('Umrah Visa');
   const [isEditing, setIsEditing] = useState(false);
-  const [paying, setPaying] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     displayName: '',
     phoneNumber: '',
@@ -35,6 +34,7 @@ export default function Profile() {
   });
   const [saving, setSaving] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [exportingBookingId, setExportingBookingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,21 +45,6 @@ export default function Profile() {
       }
 
       try {
-        // Handle payment success redirect
-        const urlParams = new URLSearchParams(window.location.search);
-        const paymentStatus = urlParams.get('payment');
-        const bookingId = urlParams.get('bookingId');
-
-        if (paymentStatus === 'success' && bookingId) {
-          const bookingRef = doc(db, 'bookings', bookingId);
-          await updateDoc(bookingRef, {
-            paymentStatus: 'paid',
-            status: 'confirmed'
-          });
-          // Remove query params
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
         const userRef = doc(db, 'users', auth.currentUser.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -93,41 +78,7 @@ export default function Profile() {
     load();
   }, []);
 
-  const handlePayment = async (booking: Booking) => {
-    setPaying(booking.id);
-    try {
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: booking.totalAmount,
-          packageName: booking.packageName,
-          bookingId: booking.id,
-          userEmail: auth.currentUser?.email
-        }),
-      });
-
-      const session = await response.json();
-      if (session.error) throw new Error(session.error);
-
-      const stripe = await stripePromise;
-      if (stripe) {
-        const { error } = await stripe.redirectToCheckout({
-          sessionId: session.id,
-        });
-        if (error) throw error;
-      } else {
-        // Fallback for missing stripe key in dev
-        alert("Stripe is not configured. Simulating success...");
-        window.location.href = `${window.location.origin}/profile?payment=success&bookingId=${booking.id}`;
-      }
-    } catch (error) {
-      console.error(error);
-      alert('Payment failed to initialize');
-    } finally {
-      setPaying(null);
-    }
-  };
+  // handlePayment removed
 
   const handleSaveProfile = async () => {
     if (!auth.currentUser || !profile) return;
@@ -137,9 +88,10 @@ export default function Profile() {
       await updateDoc(userRef, editForm);
       setProfile({ ...profile, ...editForm });
       setIsEditing(false);
+      toast.success('Profile updated successfully!');
     } catch (e) {
       console.error(e);
-      alert('Failed to update profile');
+      toast.error('Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -150,15 +102,49 @@ export default function Profile() {
     try {
       await sendEmailVerification(auth.currentUser);
       setVerificationSent(true);
+      toast.info('Verification email sent! Please check your inbox.');
     } catch (e) {
       console.error(e);
-      alert('Failed to send verification email. Please try again later.');
+      toast.error('Failed to send verification email. Please try again later.');
     }
   };
 
   const handleLogout = async () => {
     await auth.signOut();
     navigate('/');
+  };
+
+  const handleExportItineraryToSheets = async (booking: Booking) => {
+    setExportingBookingId(booking.id);
+    try {
+      let pkgDetail: any = null;
+      if (booking.packageId) {
+        const pkgDoc = await getDoc(doc(db, 'packages', booking.packageId));
+        if (pkgDoc.exists()) {
+          pkgDetail = pkgDoc.data();
+        }
+      }
+
+      const token = await authorizeGoogleSheets();
+      const spreadsheetUrl = await exportPersonalItinerarySheet(
+        token,
+        booking,
+        booking.passengers || [],
+        pkgDetail
+      );
+      toast.success("Itinerary successfully exported to Google Sheets!", 0, {
+        label: "Open Sheet ↗",
+        onClick: () => {
+          window.open(spreadsheetUrl, '_blank');
+        },
+        url: spreadsheetUrl
+      });
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Failed to export itinerary. Please ensure authorization wasn't closed.");
+    } finally {
+      setExportingBookingId(null);
+    }
   };
 
   const handlePassportUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -175,9 +161,10 @@ export default function Profile() {
       await updateDoc(userRef, { passportCopyUrl: downloadURL });
       
       setProfile(prev => prev ? { ...prev, passportCopyUrl: downloadURL } : null);
+      toast.success('Passport uploaded successfully!');
     } catch (error) {
       console.error(error);
-      alert('Failed to upload passport');
+      toast.error('Failed to upload passport');
     } finally {
       setIsUploadingPassport(false);
     }
@@ -197,9 +184,10 @@ export default function Profile() {
       await updateDoc(userRef, { idCardUrl: downloadURL });
       
       setProfile(prev => prev ? { ...prev, idCardUrl: downloadURL } : null);
+      toast.success('ID card uploaded successfully!');
     } catch (error) {
       console.error(error);
-      alert('Failed to upload ID card');
+      toast.error('Failed to upload ID card');
     } finally {
       setIsUploadingID(false);
     }
@@ -207,7 +195,7 @@ export default function Profile() {
 
   const handleSubmitVisaRequest = async () => {
     if (!auth.currentUser || !profile?.passportCopyUrl) {
-      alert('Please upload your passport first');
+      toast.error('Please upload your passport scanned copy first');
       return;
     }
 
@@ -223,9 +211,10 @@ export default function Profile() {
       const docRef = await addDoc(collection(db, 'visaRequests'), visaData);
       setVisaRequests([{ id: docRef.id, ...visaData } as VisaRequest, ...visaRequests]);
       setIsRequestingVisa(false);
+      toast.success('Visa request submitted successfully!');
     } catch (e) {
       console.error(e);
-      alert('Failed to submit visa request');
+      toast.error('Failed to submit visa request');
     } finally {
       setSaving(false);
     }
@@ -431,7 +420,7 @@ export default function Profile() {
               <div className="absolute bottom-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full translate-y-1/2 translate-x-1/2 blur-2xl" />
               <h3 className="text-lg font-bold mb-6 text-orange-400 relative z-10">Quick Actions</h3>
                <div className="space-y-4 relative z-10">
-                  <div className="relative">
+                  <div className="relative space-y-2">
                      <button 
                        disabled={isUploadingPassport}
                        onClick={() => document.getElementById('passport-upload')?.click()}
@@ -449,6 +438,17 @@ export default function Profile() {
                           <Upload size={16} className="text-white/20 group-hover:text-white" />
                         )}
                      </button>
+                     {profile?.passportCopyUrl && (
+                       <a 
+                         href={profile.passportCopyUrl} 
+                         target="_blank" 
+                         rel="noopener noreferrer"
+                         className="flex items-center space-x-2 text-[10px] text-orange-400 font-bold uppercase tracking-widest pl-4 hover:text-white transition-colors"
+                       >
+                         <Globe size={12} />
+                         <span>View Passport Protocol</span>
+                       </a>
+                     )}
                      <input 
                        id="passport-upload" 
                        type="file" 
@@ -457,7 +457,7 @@ export default function Profile() {
                        onChange={handlePassportUpload} 
                      />
                   </div>
-                  <div className="relative">
+                  <div className="relative space-y-2">
                      <button 
                        disabled={isUploadingID}
                        onClick={() => document.getElementById('id-upload')?.click()}
@@ -475,6 +475,17 @@ export default function Profile() {
                           <Upload size={16} className="text-white/20 group-hover:text-white" />
                         )}
                      </button>
+                     {profile?.idCardUrl && (
+                       <a 
+                         href={profile.idCardUrl} 
+                         target="_blank" 
+                         rel="noopener noreferrer"
+                         className="flex items-center space-x-2 text-[10px] text-orange-400 font-bold uppercase tracking-widest pl-4 hover:text-white transition-colors"
+                       >
+                         <Globe size={12} />
+                         <span>View Identification Node</span>
+                       </a>
+                     )}
                      <input 
                        id="id-upload" 
                        type="file" 
@@ -560,30 +571,30 @@ export default function Profile() {
 
                         <div className="text-left md:text-right flex flex-col items-start md:items-end">
                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Total Fulfilled</p>
-                           <p className="text-3xl font-black text-slate-900 mb-4">{formatCurrency(booking.totalAmount)}</p>
-                           {booking.paymentStatus !== 'paid' && (
-                             <button 
-                               onClick={() => handlePayment(booking)}
-                               disabled={paying === booking.id}
-                               className="w-full md:w-auto px-6 py-3 bg-orange-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center space-x-2 disabled:opacity-50 mb-4"
-                             >
-                               {paying === booking.id ? (
-                                 <><Loader2 size={14} className="animate-spin" /><span>Processing...</span></>
-                               ) : (
-                                 <><ShieldCheck size={14} /><span>Secure Pay Now</span></>
-                               )}
-                             </button>
-                           )}
-                           {booking.paymentStatus === 'paid' && (
-                             <div className="flex items-center space-x-2 text-emerald-500 bg-emerald-50 px-4 py-2 rounded-xl mb-4 font-bold text-[10px] uppercase tracking-widest">
-                                <CheckCircle2 size={14} />
-                                <span>Payment Verified</span>
-                             </div>
-                           )}
-                           <button className="mt-4 text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] flex items-center space-x-1 group-hover:translate-x-1 transition-transform">
-                              <span>Intelligence View</span>
-                              <ChevronRight size={14} />
-                           </button>
+                           <p className="text-3xl font-black text-slate-900">{formatCurrency(booking.totalAmount)}</p>
+                           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-4">
+                              <button 
+                                onClick={() => handleExportItineraryToSheets(booking)}
+                                disabled={exportingBookingId === booking.id}
+                                className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-555 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-1.5 transition-all shadow-sm shrink-0 disabled:opacity-50 border border-emerald-100"
+                              >
+                                {exportingBookingId === booking.id ? (
+                                  <>
+                                    <Loader2 size={12} className="animate-spin" />
+                                    <span>Exporting...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <FileText size={12} />
+                                    <span>Export Itinerary ↗</span>
+                                  </>
+                                )}
+                              </button>
+                              <button className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] flex items-center space-x-1 group-hover:translate-x-1 transition-transform self-end sm:self-auto">
+                                 <span>Intelligence View</span>
+                                 <ChevronRight size={14} />
+                              </button>
+                           </div>
                         </div>
                      </motion.div>
                   ))}

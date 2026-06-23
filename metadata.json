@@ -8,6 +8,7 @@
   "majorCapabilities": [
     "Firebase",
     "Full-Stack",
-    "Generative AI"
+    "Generative AI",
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }

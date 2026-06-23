@@ -123,6 +123,18 @@
     "/admins/{userId}": {
       "schema": { "type": "object", "properties": { "active": { "type": "boolean" }, "email": { "type": "string" } } },
       "description": "Administrative permission markers."
+    },
+    "/chatSessions/{sessionId}": {
+      "schema": { "type": "object", "properties": { "userId": { "type": "string" }, "lastMessage": { "type": "string" }, "unreadCount": { "type": "integer" } } },
+      "description": "Live support chat sessions."
+    },
+    "/chatSessions/{sessionId}/messages/{messageId}": {
+      "schema": { "type": "object", "properties": { "text": { "type": "string" }, "senderId": { "type": "string" }, "isAdmin": { "type": "boolean" } } },
+      "description": "Messages within a chat session."
+    },
+    "/aiLogs/{logId}": {
+      "schema": { "type": "object", "properties": { "timestamp": { "type": "string" }, "message": { "type": "string" } } },
+      "description": "System event and AI process logs."
     }
   }
 }

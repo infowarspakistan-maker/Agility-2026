@@ -14,8 +14,7 @@ const resources = {
         "logout": "Sign Out"
       },
       "hero": {
-        "title": "AL-MALIK TRAVELS",
-        "subtitle": "Your Gateway to Spiritual & Global Discovery",
+        "title": "AGILITY TRAVELS",        "subtitle": "Your Gateway to Spiritual & Global Discovery",
         "cta": "Explore Packages",
         "description": "Experience the journey of a lifetime with our premium Umrah services and exclusive global travel packages."
       },
@@ -37,8 +36,7 @@ const resources = {
         "logout": "سائن آؤٹ"
       },
       "hero": {
-        "title": "الملک ٹریولز",
-        "subtitle": "آپ کا روحانی اور عالمی دریافت کا راستہ",
+        "title": "ایجلٹی ٹریولز",        "subtitle": "آپ کا روحانی اور عالمی دریافت کا راستہ",
         "cta": "پیکیجز تلاش کریں",
         "description": "ہماری پریمیم عمرہ سروسز اور خصوصی عالمی سفری پیکیجز کے ساتھ زندگی کا یادگار سفر تجربہ کریں۔"
       },
@@ -60,8 +58,7 @@ const resources = {
         "logout": "تسجيل الخروج"
       },
       "hero": {
-        "title": "الملك للأسفار",
-        "subtitle": "بوابتك للاكتشاف الروحي والعالمي",
+        "title": "اجيليتي للسفر",        "subtitle": "بوابتك للاكتشاف الروحي والعالمي",
         "cta": "استكشف الباقات",
         "description": "اختبر رحلة العمر من خلال خدمات العمرة المتميزة وباقات السفر العالمية الحصرية."
       },

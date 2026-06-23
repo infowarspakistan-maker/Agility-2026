@@ -4,6 +4,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from '@/src/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { UserProfile } from '@/src/types';
+import { ToastProvider } from '@/src/components/layout/ToastContext';
 
 import Navbar from '@/src/components/layout/Navbar';
 import Footer from '@/src/components/layout/Footer';
@@ -81,29 +82,31 @@ export default function App() {
   }
 
   return (
-    <Router>
-      <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-orange-100 selection:text-orange-900">
-        <Navbar />
-        <main className="flex-grow">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/packages/:type" element={<Packages />} />
-            <Route path="/package/:id" element={<PackageDetails />} />
-            <Route path="/faq" element={<FAQ />} />
-            <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
-            <Route path="/admin" element={profile?.role === 'admin' ? <Admin /> : <Navigate to="/" />} />
-            <Route path="/login" element={<Auth />} />
-            <Route path="/about" element={<Placeholder name="Our Story" />} />
-            <Route path="/contact" element={<Placeholder name="Support Center" />} />
-            <Route path="/placeholder/:name" element={<Placeholder name="System Update" />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </main>
-        <div className="mt-auto">
-          <Footer />
+    <ToastProvider>
+      <Router>
+        <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-orange-100 selection:text-orange-900">
+          <Navbar />
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/packages/:type" element={<Packages />} />
+              <Route path="/package/:id" element={<PackageDetails />} />
+              <Route path="/faq" element={<FAQ />} />
+              <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
+              <Route path="/admin" element={profile?.role === 'admin' ? <Admin /> : <Navigate to="/" />} />
+              <Route path="/login" element={<Auth />} />
+              <Route path="/about" element={<Placeholder name="Our Story" />} />
+              <Route path="/contact" element={<Placeholder name="Support Center" />} />
+              <Route path="/placeholder/:name" element={<Placeholder name="System Update" />} />
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </main>
+          <div className="mt-auto">
+            <Footer />
+          </div>
+          <VisaConsultant />
         </div>
-        <VisaConsultant />
-      </div>
-    </Router>
+      </Router>
+    </ToastProvider>
   );
 }

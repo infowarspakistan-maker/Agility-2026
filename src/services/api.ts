@@ -134,6 +134,34 @@ export const seedDatabase = async () => {
       images: ['https://images.unsplash.com/photo-1544027993-37dbfe43562a?auto=format&fit=crop&w=800&q=80'],
       inventoryCount: 999,
       featured: false
+    },
+    {
+      title: 'Dubai Trade Expo Delegate Pass',
+      description: 'Join the international business elite. Complete business matchmaking, premium lounge access, 5-star hotel lodging, and professional networking passes for Dubai Expo.',
+      type: 'expo',
+      price: 240000,
+      currency: 'PKR',
+      category: 'Business',
+      duration: '5 Days',
+      itinerary: ['VIP Trade Expo Multi-Day Pass', '4 Nights in 5-Star Downtown Dubai Hotel', 'Elite B2B Networking Invitation', 'Bilingual Coordinator & Local Transfers'],
+      images: ['https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80'],
+      inventoryCount: 25,
+      featured: true,
+      isTrending: true
+    },
+    {
+      title: 'German Academic Pathway & Student Visa Support',
+      description: 'Comprehensive student counseling, public university placements, German blockade bank setup guidance, and high-success visa coaching.',
+      type: 'study-abroad',
+      price: 120000,
+      currency: 'PKR',
+      category: 'Education',
+      duration: '3 Months Support',
+      itinerary: ['Personal Career & University Profiling', '3 Public/Private University Applications', 'Blocked Account & Insurance Setup Assistance', 'Premium Mock Visa Interviews & Support'],
+      images: ['https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80'],
+      inventoryCount: 50,
+      featured: true,
+      isTrending: true
     }
   ];
 

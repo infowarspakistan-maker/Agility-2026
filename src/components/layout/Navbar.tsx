@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Plane, Ship, Map, ShieldCheck, User, Menu, X, Landmark, Briefcase, Settings } from 'lucide-react';
+import { Plane, Ship, Map, ShieldCheck, User, Menu, X, Landmark, Briefcase, Settings, GraduationCap } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
@@ -42,9 +42,11 @@ export default function Navbar() {
   }, []);
 
   const navLinks = [
-    { name: t('nav.home'), href: '/', icon: Landmark },
-    { name: t('nav.packages'), href: '/packages', icon: Landmark },
-    { name: t('nav.visas'), href: '/packages/visa', icon: ShieldCheck },
+    { name: 'Home', href: '/', icon: Plane },
+    { name: 'Umrah', href: '/packages/umrah', icon: Landmark },
+    { name: 'EXPO', href: '/packages/expo', icon: Briefcase },
+    { name: 'Study Abroad', href: '/packages/study-abroad', icon: GraduationCap },
+    { name: 'VISA Services', href: '/packages/visa', icon: ShieldCheck },
   ];
 
   return (
@@ -64,7 +66,7 @@ export default function Navbar() {
               "text-2xl font-bold tracking-tight",
               isScrolled ? "text-slate-900" : "text-white drop-shadow-md"
             )}>
-              Al-Malik <span className="text-orange-500">Travels</span>
+              Agility <span className="text-orange-500">Travels</span>
             </span>
           </Link>
 
@@ -76,7 +78,7 @@ export default function Navbar() {
                 to={link.href}
                 className={cn(
                   "text-sm font-bold transition-colors hover:text-orange-500 uppercase tracking-widest",
-                  isScrolled ? "text-slate-600" : "text-white/90 hover:text-white"
+                  isScrolled ? "text-slate-600" : "text-white drop-shadow-md hover:text-white"
                 )}
               >
                 {link.name}

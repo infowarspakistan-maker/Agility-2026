@@ -1,4 +1,4 @@
-export type PackageType = 'umrah' | 'haj' | 'visa' | 'domestic-group' | 'domestic-private';
+export type PackageType = 'umrah' | 'haj' | 'visa' | 'domestic-group' | 'domestic-private' | 'expo' | 'study-abroad';
 
 export interface TravelPackage {
   id: string;
@@ -12,6 +12,7 @@ export interface TravelPackage {
   itinerary: string[];
   images: string[];
   inventoryCount: number;
+  locations?: string;
   isTrending?: boolean;
   featured?: boolean;
 }

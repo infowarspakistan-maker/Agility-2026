@@ -13,7 +13,7 @@ interface Message {
 export default function VisaConsultant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: 'As-salam-alaikum! I am your Al-Malik Smart Visa Consultant. How can I help you with your Umrah or domestic travel plans today?' }
+    { role: 'model', text: 'As-salam-alaikum! I am your Agility Smart Visa Consultant. How can I help you with your Umrah or domestic travel plans today?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);

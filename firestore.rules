@@ -90,5 +90,16 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow create: if isSignedIn();
     }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Slides
+    match /slides/{slideId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

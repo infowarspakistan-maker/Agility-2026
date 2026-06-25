@@ -563,7 +563,7 @@ export default function Profile() {
                                  </span>
                                  <span className="flex items-center">
                                     <Users size={14} className="mr-2 text-slate-300" />
-                                    {booking.passengers.length} Travelers
+                                    {booking.passengers.length} {booking.packageType === 'study-abroad' ? 'Students' : (booking.packageType === 'corporate' || booking.packageType === 'expo') ? 'Delegates' : 'Travelers'}
                                  </span>
                               </div>
                            </div>

@@ -4,6 +4,9 @@ import { MessageSquare, X, Send, Sparkles, Loader2, Bot, User, Globe } from 'luc
 import { getVisaConsultation } from '@/src/services/aiService';
 import { cn } from '@/src/lib/utils';
 import Markdown from 'react-markdown';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/src/lib/firebase';
+import { TravelPackage } from '@/src/types';
 
 interface Message {
   role: 'user' | 'model';
@@ -13,11 +16,33 @@ interface Message {
 export default function VisaConsultant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: 'As-salam-alaikum! I am your Agility Smart Visa Consultant. How can I help you with your Umrah or domestic travel plans today?' }
+    { role: 'model', text: 'As-salam-alaikum! I am your Agility AI Assistant. How can I help you find the right Umrah, Study Abroad, or Expo package today?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [packagesContext, setPackagesContext] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function loadPackages() {
+      try {
+        const q = query(collection(db, 'packages'));
+        const snapshot = await getDocs(q);
+        const pkgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TravelPackage[];
+        
+        const context = pkgs.map(p => 
+          `Package: ${p.title} (Type: ${p.type}, Price: ${p.currency} ${p.price}, Duration: ${p.duration})\n` +
+          `Description: ${p.description}\n` +
+          `Link: /packages/${p.id}\n`
+        ).join('\n---\n');
+        
+        setPackagesContext(context);
+      } catch (err) {
+        console.error("Failed to load packages for AI context", err);
+      }
+    }
+    loadPackages();
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -39,7 +64,7 @@ export default function VisaConsultant() {
         parts: [{ text: m.text }]
       }));
       
-      const response = await getVisaConsultation(userMessage, history);
+      const response = await getVisaConsultation(userMessage, history, packagesContext);
       setMessages(prev => [...prev, { role: 'model', text: response }]);
     } catch (err) {
       console.error(err);
@@ -82,7 +107,7 @@ export default function VisaConsultant() {
                 <div>
                   <div className="flex items-center space-x-2 mb-1">
                     <Sparkles size={16} className="text-orange-400" />
-                    <h3 className="font-bold italic tracking-tighter text-lg">VISA CONSULTANT</h3>
+                    <h3 className="font-bold italic tracking-tighter text-lg">AGILITY AI ASSISTANT</h3>
                   </div>
                   <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Powered by Advanced AI Intelligence</p>
                 </div>
@@ -142,7 +167,7 @@ export default function VisaConsultant() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Ask about Umrah requirements..."
+                  placeholder="Ask about our packages..."
                   className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 pl-6 pr-14 text-sm font-medium focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/5 transition-all"
                 />
                 <button 

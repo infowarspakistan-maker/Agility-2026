@@ -16,6 +16,7 @@ import Auth from '@/src/pages/Auth';
 import Profile from '@/src/pages/Profile';
 import Admin from '@/src/pages/Admin';
 import FAQ from '@/src/pages/FAQ';
+import Contact from '@/src/pages/Contact';
 
 const Placeholder = ({ name }: { name: string }) => (
   <div className="min-h-screen flex flex-col items-center justify-center pt-32 pb-20 px-4 text-center">
@@ -96,7 +97,7 @@ export default function App() {
               <Route path="/admin" element={profile?.role === 'admin' ? <Admin /> : <Navigate to="/" />} />
               <Route path="/login" element={<Auth />} />
               <Route path="/about" element={<Placeholder name="Our Story" />} />
-              <Route path="/contact" element={<Placeholder name="Support Center" />} />
+              <Route path="/contact" element={<Contact />} />
               <Route path="/placeholder/:name" element={<Placeholder name="System Update" />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

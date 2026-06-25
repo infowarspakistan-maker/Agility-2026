@@ -1,4 +1,4 @@
-export type PackageType = 'umrah' | 'haj' | 'visa' | 'domestic-group' | 'domestic-private' | 'expo' | 'study-abroad';
+export type PackageType = 'umrah' | 'haj' | 'visa' | 'domestic-group' | 'domestic-private' | 'expo' | 'study-abroad' | 'corporate';
 
 export interface TravelPackage {
   id: string;
@@ -10,6 +10,8 @@ export interface TravelPackage {
   category: string;
   duration: string;
   itinerary: string[];
+  itineraryDetails?: { title: string; description: string }[];
+  additionalInfo?: { title: string; description: string }[];
   images: string[];
   inventoryCount: number;
   locations?: string;
@@ -36,6 +38,19 @@ export interface Passenger {
   name: string;
   passportNumber: string;
   age: number;
+  dob?: string;
+  gender?: string;
+  nationality?: string;
+  passportExpiry?: string;
+  passportIssueDate?: string;
+  issuingCountry?: string;
+  studyProgram?: string;
+  studyField?: string;
+  companyName?: string;
+  designation?: string;
+  academicBackground?: string;
+  travelHistory?: string;
+  exhibitorProfile?: string;
 }
 
 export interface Booking {
@@ -51,6 +66,10 @@ export interface Booking {
   amountPaid: number;
   bookingDate: string;
   passengers: Passenger[];
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contactAddress?: string;
   notes?: string;
   passportUrl?: string;
   idCardUrl?: string;
@@ -96,3 +115,15 @@ export interface ChatSession {
   updatedAt: any;
   unreadCount: number;
 }
+
+export interface HeroSlide {
+  id?: string;
+  tagline: string;
+  title: string;
+  description: string;
+  image: string;
+  actionText: string;
+  href: string;
+  order?: number;
+}
+

@@ -8,12 +8,18 @@ export interface ExtractedPassenger {
   name: string;
   passportNumber: string;
   age: number;
+  dob?: string;
+  gender?: string;
+  nationality?: string;
+  passportExpiry?: string;
+  passportIssueDate?: string;
+  issuingCountry?: string;
 }
 
 export async function extractPassengerFromPassport(base64Image: string, mimeType: string): Promise<ExtractedPassenger | null> {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       contents: [
         {
           parts: [
@@ -24,12 +30,19 @@ export async function extractPassengerFromPassport(base64Image: string, mimeType
               },
             },
             {
-              text: `Extract passenger details from this passport image. 
-              Required fields: 
-              - Full Name (Exactly as shown)
-              - Passport Number
-              - Age (Calculate from Date of Birth if possible, relative to May 2026, or just extract DOB).
+              text: `Extract passenger details from this passport image. Be extremely precise. 
+              Analyze the passport photo details carefully (especially the Machine Readable Zone (MRZ) at the bottom if visible).
               
+              Required fields to extract:
+              - Full Name (Exactly as shown, combining first, middle, and surnames appropriately)
+              - Passport Number (Typically alphanumeric, check carefully)
+              - Date of Birth (dob) in YYYY-MM-DD format
+              - Gender (Male, Female, or Other)
+              - Nationality (Country name, e.g. Pakistan, United States, Saudi Arabia, etc.)
+              - Passport Expiry Date (passportExpiry) in YYYY-MM-DD format
+              - Passport Issue Date (passportIssueDate) in YYYY-MM-DD format
+              - Issuing Country (Country of issue, e.g. Pakistan, USA, etc.)
+
               Respond ONLY in JSON format.`,
             },
           ],
@@ -43,8 +56,13 @@ export async function extractPassengerFromPassport(base64Image: string, mimeType
             name: { type: Type.STRING, description: "Full name of the passenger" },
             passportNumber: { type: Type.STRING, description: "Passport number" },
             dob: { type: Type.STRING, description: "Date of Birth (YYYY-MM-DD)" },
+            gender: { type: Type.STRING, description: "Gender (Male, Female, or Other)" },
+            nationality: { type: Type.STRING, description: "Nationality of the passenger" },
+            passportExpiry: { type: Type.STRING, description: "Passport Expiry Date (YYYY-MM-DD)" },
+            passportIssueDate: { type: Type.STRING, description: "Passport Issue Date (YYYY-MM-DD)" },
+            issuingCountry: { type: Type.STRING, description: "Country that issued the passport" },
           },
-          required: ["name", "passportNumber", "dob"],
+          required: ["name", "passportNumber", "dob", "gender", "nationality", "passportExpiry"],
         },
       },
     });
@@ -55,7 +73,7 @@ export async function extractPassengerFromPassport(base64Image: string, mimeType
     let calculatedAge = 0;
     if (data.dob) {
       const birthDate = new Date(data.dob);
-      const today = new Date(); // In production this would be better anchored or using a fixed date for consistency in a travel context
+      const today = new Date();
       calculatedAge = today.getFullYear() - birthDate.getFullYear();
       const m = today.getMonth() - birthDate.getMonth();
       if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
@@ -63,10 +81,16 @@ export async function extractPassengerFromPassport(base64Image: string, mimeType
       }
     }
 
-    const result = {
-      name: data.name,
-      passportNumber: data.passportNumber,
-      age: calculatedAge > 0 ? calculatedAge : 0
+    const result: ExtractedPassenger = {
+      name: data.name || '',
+      passportNumber: data.passportNumber || '',
+      age: calculatedAge > 0 ? calculatedAge : 0,
+      dob: data.dob || '',
+      gender: data.gender || '',
+      nationality: data.nationality || '',
+      passportExpiry: data.passportExpiry || '',
+      passportIssueDate: data.passportIssueDate || '',
+      issuingCountry: data.issuingCountry || ''
     };
     
     // Log for audit
@@ -77,7 +101,7 @@ export async function extractPassengerFromPassport(base64Image: string, mimeType
       extractedData: result
     });
 
-    return result as ExtractedPassenger;
+    return result;
   } catch (error) {
     console.error("AI Extraction Error:", error);
     
@@ -92,13 +116,18 @@ export async function extractPassengerFromPassport(base64Image: string, mimeType
   }
 }
 
-export async function getVisaConsultation(message: string, history: any[] = []) {
+export async function getVisaConsultation(message: string, history: any[] = [], packagesContext: string = "") {
   try {
     const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
       history: history,
       config: {
-        systemInstruction: "You are the 'Smart Visa Consultant' for Agility Travels. You specialize in Umrah visas, domestic travel in Pakistan, and travel document requirements. Be professional, direct, and helpful. Use Pakistani travel context where relevant."
+        systemInstruction: `You are the 'Agility AI Assistant' for Agility Travels. You specialize in Umrah, Study Abroad, and Expo packages available on our webapp. Be professional, direct, and helpful. 
+        
+IMPORTANT: Only provide information about the packages available on the webapp. If the user asks about a package, use the following context to recommend the right package and provide a link to it. If the context does not contain relevant packages, politely inform the user that we do not have such packages currently but they can contact our support team.
+
+AVAILABLE PACKAGES:
+${packagesContext}`
       }
     });
 
@@ -107,7 +136,7 @@ export async function getVisaConsultation(message: string, history: any[] = []) 
 
     // Log for audit
     await addDoc(collection(db, "aiLogs"), {
-      type: "visa_consultant_chat",
+      type: "agility_ai_chat",
       success: true,
       timestamp: serverTimestamp(),
       data: { query: message, response: text }

@@ -162,6 +162,59 @@ export const seedDatabase = async () => {
       inventoryCount: 50,
       featured: true,
       isTrending: true
+    },
+    {
+      title: 'Finland Admission Support Package',
+      description: 'Education in English & Scholarships. Finland’s world leading higher education system offers 400+ bachelor’s and master’s degree programs in English. Selection of the right program and university for IT, AI and Medical programs.',
+      type: 'study-abroad',
+      price: 499,
+      currency: 'EUR',
+      category: 'Admission Support',
+      duration: 'Program Intakes: Summer, Winter, Autumn 2027',
+      itinerary: ['University selection', 'Course selection', 'Assistance in application filling', 'Motivation and reference letters', 'Assistance to acquire scholarships', 'Email support'],
+      images: ['https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=800&q=80'],
+      inventoryCount: 100,
+      featured: true,
+      isTrending: true
+    },
+    {
+      title: 'Finland Visa Support Package',
+      description: 'Complete Visa Support for Finland study programs. We will assist you throughout from selection of the right program and university until you receive the resident permit.',
+      type: 'study-abroad',
+      price: 1999,
+      currency: 'EUR',
+      category: 'Visa Support',
+      duration: 'Program Intakes: Summer, Winter, Autumn 2027',
+      itinerary: ['Assistance in all document’s preparations', 'Visa application filing', 'Assistance in Appointment booking', 'Interview preparations', 'Assistance in health insurance', 'One to one session with consultant'],
+      images: ['https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80'],
+      inventoryCount: 100,
+      featured: false
+    },
+    {
+      title: 'Finland Arrival Support Package',
+      description: 'Post-arrival support in Finland for students. Get adapted to Finland and its job market.',
+      type: 'study-abroad',
+      price: 499,
+      currency: 'EUR',
+      category: 'Arrival Support',
+      duration: 'Program Intakes: Summer, Winter, Autumn 2027',
+      itinerary: ['Euro CV preparation', 'Adaptation in Finland', 'Opening bank account', 'Email support', 'Orientation about Finnish job market', 'Assistance in job hunting'],
+      images: ['https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=800&q=80'],
+      inventoryCount: 100,
+      featured: false
+    },
+    {
+      title: 'Talk To A Consultant (Finland Study)',
+      description: 'Consultation session for studying in Finland. Discuss programs, scholarships, and general information.',
+      type: 'study-abroad',
+      price: 69,
+      currency: 'EUR',
+      category: 'Consultation',
+      duration: '1 Hour',
+      itinerary: ['Question and answer session', 'General Information', 'Scholarship information'],
+      images: ['https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&w=800&q=80'],
+      inventoryCount: 500,
+      featured: false
     }
   ];
 

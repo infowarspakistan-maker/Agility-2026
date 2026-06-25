@@ -135,6 +135,26 @@
     "/aiLogs/{logId}": {
       "schema": { "type": "object", "properties": { "timestamp": { "type": "string" }, "message": { "type": "string" } } },
       "description": "System event and AI process logs."
+    },
+    "/settings/{settingId}": {
+      "schema": { "type": "object", "properties": { "spreadsheetId": { "type": "string" }, "spreadsheetUrl": { "type": "string" }, "lastSync": { "type": "string" } } },
+      "description": "Administrative configurations and app settings."
+    },
+    "/slides/{slideId}": {
+      "schema": { 
+        "type": "object", 
+        "properties": { 
+          "tagline": { "type": "string" }, 
+          "title": { "type": "string" }, 
+          "description": { "type": "string" }, 
+          "image": { "type": "string" }, 
+          "actionText": { "type": "string" }, 
+          "href": { "type": "string" },
+          "order": { "type": "integer" }
+        },
+        "required": ["tagline", "title", "description", "image", "actionText", "href"]
+      },
+      "description": "Dynamic homepage hero slides."
     }
   }
 }

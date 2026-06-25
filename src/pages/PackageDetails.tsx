@@ -4,10 +4,11 @@ import { db, auth } from '@/src/lib/firebase';
 import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { TravelPackage, Booking, Passenger } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload } from 'lucide-react';
+import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { extractPassengerFromPassport } from '@/src/services/aiService';
 import { useToast } from '@/src/components/layout/ToastContext';
+import DynamicPassengerFields from '@/src/components/DynamicPassengerFields';
 
 export default function PackageDetails() {
   const toast = useToast();
@@ -21,10 +22,24 @@ export default function PackageDetails() {
   const scanInputRef = useRef<HTMLInputElement>(null);
   
   // Form State
-  const [passengers, setPassengers] = useState<Passenger[]>([{ name: '', passportNumber: '', age: 0 }]);
+  const [passengers, setPassengers] = useState<Passenger[]>([{ 
+    name: '', 
+    passportNumber: '', 
+    age: 0, 
+    dob: '', 
+    gender: '', 
+    nationality: '', 
+    passportExpiry: '', 
+    passportIssueDate: '', 
+    issuingCountry: '' 
+  }]);
+  const [contactInfo, setContactInfo] = useState({ name: '', email: '', phone: '', address: '' });
   const [paymentMethod, setPaymentMethod] = useState('bank');
   const [passportFile, setPassportFile] = useState<File | null>(null);
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
+  
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatusText, setUploadStatusText] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -40,7 +55,17 @@ export default function PackageDetails() {
   }, [id]);
 
   const addPassenger = () => {
-    setPassengers([...passengers, { name: '', passportNumber: '', age: 0 }]);
+    setPassengers([...passengers, { 
+      name: '', 
+      passportNumber: '', 
+      age: 0, 
+      dob: '', 
+      gender: '', 
+      nationality: '', 
+      passportExpiry: '', 
+      passportIssueDate: '', 
+      issuingCountry: '' 
+    }]);
   };
 
   const removePassenger = (index: number) => {
@@ -78,7 +103,13 @@ export default function PackageDetails() {
         handlePassengerChange(index, 'name', result.name);
         handlePassengerChange(index, 'passportNumber', result.passportNumber);
         handlePassengerChange(index, 'age', result.age);
-        toast.success("Passenger details extracted successfully!");
+        if (result.dob) handlePassengerChange(index, 'dob', result.dob);
+        if (result.gender) handlePassengerChange(index, 'gender', result.gender);
+        if (result.nationality) handlePassengerChange(index, 'nationality', result.nationality);
+        if (result.passportExpiry) handlePassengerChange(index, 'passportExpiry', result.passportExpiry);
+        if (result.passportIssueDate) handlePassengerChange(index, 'passportIssueDate', result.passportIssueDate);
+        if (result.issuingCountry) handlePassengerChange(index, 'issuingCountry', result.issuingCountry);
+        toast.success("Passport scanned! All fields auto-completed by AI ✨");
       } else {
         toast.error("AI could not extract details. Please enter manually.");
       }
@@ -100,23 +131,32 @@ export default function PackageDetails() {
 
     setBookingLoading(true);
     try {
-      let passportUrl = '';
-      let idCardUrl = '';
+      let driveFileIds: string[] = [];
+      const filesToUpload: File[] = [];
+      if (passportFile) filesToUpload.push(passportFile);
+      if (idCardFile) filesToUpload.push(idCardFile);
 
-      if (passportFile) {
-        const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-        const { storage } = await import('@/src/lib/firebase');
-        const passRef = ref(storage, `bookings/passports/${auth.currentUser.uid}-${Date.now()}`);
-        const snap = await uploadBytes(passRef, passportFile);
-        passportUrl = await getDownloadURL(snap.ref);
-      }
-
-      if (idCardFile) {
-        const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-        const { storage } = await import('@/src/lib/firebase');
-        const idRef = ref(storage, `bookings/id_cards/${auth.currentUser.uid}-${Date.now()}`);
-        const snap = await uploadBytes(idRef, idCardFile);
-        idCardUrl = await getDownloadURL(snap.ref);
+      if (filesToUpload.length > 0) {
+        const { uploadBookingDocuments } = await import('@/src/services/googleDriveService');
+        const catFolder = pkg.type === 'study-abroad' ? 'Study Abroad' : 
+                          (pkg.type === 'expo' || pkg.type === 'corporate') ? 'Expo Bookings' : 
+                          pkg.type === 'umrah' ? 'Umrah' : 'General Bookings';
+        
+        try {
+           driveFileIds = await uploadBookingDocuments(
+             catFolder,
+             new Date().toISOString().split('T')[0],
+             contactInfo.name || passengers[0].name || auth.currentUser.displayName || 'Unknown Client',
+             filesToUpload,
+             (progress, statusText) => {
+               setUploadProgress(progress);
+               setUploadStatusText(statusText);
+             }
+           );
+        } catch(e) {
+           console.error("Failed to upload to Google Drive:", e);
+           // Allow booking to proceed without documents, user can try again later
+        }
       }
 
       const bookingData: Omit<Booking, 'id'> = {
@@ -131,8 +171,11 @@ export default function PackageDetails() {
         amountPaid: 0,
         bookingDate: new Date().toISOString(),
         passengers: passengers,
-        passportUrl: passportUrl || undefined,
-        idCardUrl: idCardUrl || undefined
+        contactName: contactInfo.name,
+        contactEmail: contactInfo.email,
+        contactPhone: contactInfo.phone,
+        contactAddress: contactInfo.address,
+        notes: driveFileIds.length > 0 ? `Uploaded ${driveFileIds.length} document(s) to Google Drive.` : '',
       };
 
       await addDoc(collection(db, 'bookings'), bookingData);
@@ -217,17 +260,53 @@ export default function PackageDetails() {
                  <div className="prose prose-slate max-w-none">
                     <h3 className="text-2xl font-bold mb-4">About this package</h3>
                     <p className="text-slate-600 leading-relaxed mb-6">{pkg.description}</p>
-                    <h3 className="text-2xl font-bold mb-4">Itinerary</h3>
-                    <ul className="space-y-4">
-                       {pkg.itinerary.map((item, idx) => (
-                         <li key={idx} className="flex items-start">
-                            <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold mr-3 shrink-0 mt-1">
-                               {idx + 1}
+                    
+                    {pkg.itineraryDetails && pkg.itineraryDetails.length > 0 ? (
+                      <div className="mb-8">
+                        <h3 className="text-2xl font-bold mb-4">Detailed Itinerary</h3>
+                        <div className="space-y-6">
+                          {pkg.itineraryDetails.map((detail, idx) => (
+                            <div key={idx} className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                              <h4 className="font-bold text-slate-900 text-lg mb-2 flex items-center">
+                                <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-bold mr-3 shrink-0">
+                                   {idx + 1}
+                                </div>
+                                {detail.title}
+                              </h4>
+                              <p className="text-slate-600 ml-11 whitespace-pre-wrap">{detail.description}</p>
                             </div>
-                            <span className="text-slate-700">{item}</span>
-                         </li>
-                       ))}
-                    </ul>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="text-2xl font-bold mb-4">Itinerary</h3>
+                        <ul className="space-y-4 mb-8">
+                           {pkg.itinerary.map((item, idx) => (
+                             <li key={idx} className="flex items-start">
+                                <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold mr-3 shrink-0 mt-1">
+                                   {idx + 1}
+                                </div>
+                                <span className="text-slate-700">{item}</span>
+                             </li>
+                           ))}
+                        </ul>
+                      </>
+                    )}
+
+                    {pkg.additionalInfo && pkg.additionalInfo.length > 0 && (
+                      <div className="mb-8">
+                        <h3 className="text-2xl font-bold mb-4">Additional Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {pkg.additionalInfo.map((info, idx) => (
+                            <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                              <h4 className="font-bold text-slate-900 mb-2">{info.title}</h4>
+                              <p className="text-slate-600 text-sm whitespace-pre-wrap">{info.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                  </div>
                </motion.div>
              )}
@@ -240,7 +319,65 @@ export default function PackageDetails() {
                  key="step2"
                  className="space-y-8"
                >
-                  <h3 className="text-2xl font-bold">Passenger Details</h3>
+                  <h3 className="text-2xl font-bold">
+                    {pkg.type === 'study-abroad' ? 'Student & Contact Details' : 
+                     (pkg.type === 'corporate' || pkg.type === 'expo') ? 'Delegate & Contact Details' : 
+                     'Passenger & Contact Details'}
+                  </h3>
+
+                  {/* Primary Contact Info Section */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center">
+                       <User size={16} className="mr-2 text-orange-500" />
+                       Primary Contact Information
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Full Name</label>
+                        <input 
+                          type="text" 
+                          required
+                          placeholder="Primary Contact Name"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                          value={contactInfo.name}
+                          onChange={(e) => setContactInfo({...contactInfo, name: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                        <input 
+                          type="email" 
+                          required
+                          placeholder="Email Address"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                          value={contactInfo.email}
+                          onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Phone Number</label>
+                        <input 
+                          type="tel" 
+                          required
+                          placeholder="Phone / WhatsApp"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                          value={contactInfo.phone}
+                          onChange={(e) => setContactInfo({...contactInfo, phone: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Residential Address</label>
+                        <input 
+                          type="text" 
+                          placeholder="City, Country"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                          value={contactInfo.address}
+                          onChange={(e) => setContactInfo({...contactInfo, address: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex items-center space-x-2 p-4 bg-orange-50 border border-orange-100 rounded-2xl mb-6">
                     <Sparkles className="text-orange-500 shrink-0" size={18} />
                     <p className="text-xs font-semibold text-orange-800">
@@ -270,7 +407,10 @@ export default function PackageDetails() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Full Name (As on Passport)</label>
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Full Name (As on Passport)</label>
+                              {p.name && <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider flex items-center gap-0.5"><Sparkles size={8} /> AI</span>}
+                            </div>
                             <input 
                               type="text" 
                               className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20"
@@ -279,7 +419,10 @@ export default function PackageDetails() {
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Passport Number</label>
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Passport Number</label>
+                              {p.passportNumber && <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider flex items-center gap-0.5"><Sparkles size={8} /> AI</span>}
+                            </div>
                             <input 
                               type="text" 
                               className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20"
@@ -288,21 +431,116 @@ export default function PackageDetails() {
                             />
                           </div>
                           <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date of Birth</label>
+                              {p.dob && <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider flex items-center gap-0.5"><Sparkles size={8} /> AI</span>}
+                            </div>
+                            <input 
+                              type="date" 
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20"
+                              value={p.dob || ''}
+                              onChange={(e) => {
+                                handlePassengerChange(i, 'dob', e.target.value);
+                                if (e.target.value) {
+                                  const birthDate = new Date(e.target.value);
+                                  const today = new Date();
+                                  let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+                                  const m = today.getMonth() - birthDate.getMonth();
+                                  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                                    calculatedAge--;
+                                  }
+                                  handlePassengerChange(i, 'age', calculatedAge > 0 ? calculatedAge : 0);
+                                }
+                              }}
+                            />
+                          </div>
+                          <div>
                             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Age</label>
                             <input 
                               type="number" 
                               className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20"
                               value={p.age}
-                              onChange={(e) => handlePassengerChange(i, 'age', parseInt(e.target.value))}
+                              onChange={(e) => handlePassengerChange(i, 'age', parseInt(e.target.value) || 0)}
                             />
                           </div>
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gender</label>
+                              {p.gender && <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider flex items-center gap-0.5"><Sparkles size={8} /> AI</span>}
+                            </div>
+                            <select 
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20"
+                              value={p.gender || ''}
+                              onChange={(e) => handlePassengerChange(i, 'gender', e.target.value)}
+                            >
+                              <option value="">Select Gender</option>
+                              <option value="Male">Male</option>
+                              <option value="Female">Female</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nationality</label>
+                              {p.nationality && <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider flex items-center gap-0.5"><Sparkles size={8} /> AI</span>}
+                            </div>
+                            <input 
+                              type="text" 
+                              placeholder="Nationality"
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20"
+                              value={p.nationality || ''}
+                              onChange={(e) => handlePassengerChange(i, 'nationality', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Passport Expiry Date</label>
+                              {p.passportExpiry && <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider flex items-center gap-0.5"><Sparkles size={8} /> AI</span>}
+                            </div>
+                            <input 
+                              type="date" 
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20"
+                              value={p.passportExpiry || ''}
+                              onChange={(e) => handlePassengerChange(i, 'passportExpiry', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Passport Issue Date</label>
+                              {p.passportIssueDate && <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider flex items-center gap-0.5"><Sparkles size={8} /> AI</span>}
+                            </div>
+                            <input 
+                              type="date" 
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20"
+                              value={p.passportIssueDate || ''}
+                              onChange={(e) => handlePassengerChange(i, 'passportIssueDate', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Issuing Country</label>
+                              {p.issuingCountry && <span className="text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider flex items-center gap-0.5"><Sparkles size={8} /> AI</span>}
+                            </div>
+                            <input 
+                              type="text" 
+                              placeholder="e.g. Pakistan"
+                              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20"
+                              value={p.issuingCountry || ''}
+                              onChange={(e) => handlePassengerChange(i, 'issuingCountry', e.target.value)}
+                            />
+                          </div>
+                          <DynamicPassengerFields 
+                            packageType={pkg.type} 
+                            passenger={p} 
+                            onChange={(field, value) => handlePassengerChange(i, field, value)} 
+                          />
                         </div>
                         {passengers.length > 1 && (
                           <button 
                             onClick={() => removePassenger(i)}
                             className="mt-4 text-[10px] font-bold text-red-400 hover:text-red-600 uppercase tracking-wider"
                           >
-                            Remove Passenger
+                            Remove {pkg.type === 'study-abroad' ? 'Student' : (pkg.type === 'corporate' || pkg.type === 'expo') ? 'Delegate' : 'Passenger'}
                           </button>
                         )}
                       </div>
@@ -312,7 +550,7 @@ export default function PackageDetails() {
                     onClick={addPassenger}
                     className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 transition-all"
                   >
-                    + Add Another Passenger
+                    + Add Another {pkg.type === 'study-abroad' ? 'Student' : (pkg.type === 'corporate' || pkg.type === 'expo') ? 'Delegate' : 'Passenger'}
                   </button>
                   <input 
                     ref={scanInputRef}
@@ -413,8 +651,8 @@ export default function PackageDetails() {
                           <span className="font-bold">{pkg.title}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-white/60">Passengers</span>
-                          <span className="font-bold">{passengers.length} Persons</span>
+                          <span className="text-white/60">{pkg.type === 'study-abroad' ? 'Students' : (pkg.type === 'corporate' || pkg.type === 'expo') ? 'Delegates' : 'Passengers'}</span>
+                          <span className="font-bold">{passengers.length} {pkg.type === 'study-abroad' ? 'Students' : (pkg.type === 'corporate' || pkg.type === 'expo') ? 'Delegates' : 'Persons'}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-white/60">Base Price</span>
@@ -506,24 +744,43 @@ export default function PackageDetails() {
                     onClick={() => setStep(step + 1)}
                     className="group bg-slate-900 text-white px-10 py-4 rounded-xl font-bold flex items-center space-x-2 hover:bg-orange-500 transition-all shadow-xl shadow-slate-900/10"
                   >
-                    <span>Next: {step === 1 ? 'Guest Info' : 'Review'}</span>
+                    <span>Next: {step === 1 ? (pkg.type === 'study-abroad' ? 'Student Info' : (pkg.type === 'corporate' || pkg.type === 'expo') ? 'Delegate Info' : 'Guest Info') : 'Review'}</span>
                     <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 ) : (
-                  <button 
-                    onClick={handleBookingSubmit}
-                    disabled={bookingLoading}
-                    className="bg-orange-500 text-white px-12 py-4 rounded-xl font-bold flex items-center space-x-3 hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/20 disabled:bg-slate-300"
-                  >
-                    {bookingLoading ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white" />
-                    ) : (
-                      <>
-                        <span>Confirm & Submit Booking</span>
-                        <ArrowRight size={20} />
-                      </>
+                  <div className="flex flex-col items-end space-y-3">
+                    {bookingLoading && uploadProgress > 0 && (
+                      <div className="w-full max-w-sm mb-2">
+                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
+                          <span>{uploadStatusText}</span>
+                          <span>{uploadProgress}%</span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                          <div 
+                            className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
                     )}
-                  </button>
+                    <button 
+                      onClick={handleBookingSubmit}
+                      disabled={bookingLoading}
+                      className="bg-orange-500 text-white px-12 py-4 rounded-xl font-bold flex items-center justify-center min-w-[280px] space-x-3 hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/20 disabled:bg-slate-300"
+                    >
+                      {bookingLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white" />
+                          <span>Processing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Confirm & Submit Booking</span>
+                          <ArrowRight size={20} />
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
              </div>
            )}
@@ -560,6 +817,16 @@ export default function PackageDetails() {
                  </div>
                </div>
              </div>
+
+             <a 
+               href={`https://wa.me/92315456263?text=${encodeURIComponent(`Hi, I would like to inquire about the package: ${pkg.title}`)}`}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="w-full py-4 mb-8 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-xl shadow-green-500/20"
+             >
+               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" /><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1" /></svg>
+               <span>Direct Inquiry via WhatsApp</span>
+             </a>
 
              <div className="space-y-4 pt-10 border-t border-slate-200">
                 <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-slate-400">

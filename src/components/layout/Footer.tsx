@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Twitter, Phone, Mail, MapPin, Plane } from 'lucide-react';
+import { Facebook, Instagram, Twitter, Phone, Mail, MapPin, Plane, MessageCircle } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -64,7 +64,11 @@ export default function Footer() {
               </li>
               <li className="flex items-center space-x-3">
                 <Phone size={18} className="text-orange-500 shrink-0" />
-                <span>0320 500 4446 | 0315 425 6263</span>
+                <span>0320 500 4446 (Call)</span>
+              </li>
+              <li className="flex items-center space-x-3">
+                <MessageCircle size={18} className="text-green-500 shrink-0" />
+                <span>0315 425 6263 (WhatsApp)</span>
               </li>
               <li className="flex items-center space-x-3">
                 <Mail size={18} className="text-orange-500 shrink-0" />

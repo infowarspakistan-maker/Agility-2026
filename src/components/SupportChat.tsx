@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageCircle, X, Send, User, Headset, Loader2, Image as ImageIcon } from 'lucide-react';
-import { auth, db } from '@/src/lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, where, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/src/lib/utils';
@@ -43,6 +43,8 @@ export default function SupportChat() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ChatMessage[];
       setMessages(msgs);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `chatSessions/${sessionId}/messages`);
     });
 
     return () => unsubscribe();

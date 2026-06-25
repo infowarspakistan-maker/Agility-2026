@@ -41,6 +41,9 @@ export default function Navbar() {
     };
   }, []);
 
+  const isHome = location.pathname === '/';
+  const showTransparent = isHome && !isScrolled;
+
   const navLinks = [
     { name: 'Home', href: '/', icon: Plane },
     { name: 'Umrah', href: '/packages/umrah', icon: Landmark },
@@ -53,7 +56,7 @@ export default function Navbar() {
     <nav 
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        isScrolled ? "bg-white/90 backdrop-blur-md shadow-sm py-3" : "bg-transparent py-5"
+        showTransparent ? "bg-transparent py-5" : "bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-100 py-3"
       )}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -64,21 +67,21 @@ export default function Navbar() {
             </div>
             <span className={cn(
               "text-2xl font-bold tracking-tight",
-              isScrolled ? "text-slate-900" : "text-white drop-shadow-md"
+              showTransparent ? "text-white drop-shadow-md" : "text-slate-900"
             )}>
               Agility <span className="text-orange-500">Travels</span>
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
+          <div className={cn("hidden md:flex items-center space-x-6", showTransparent && "drop-shadow-lg")}>
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 to={link.href}
                 className={cn(
                   "text-sm font-bold transition-colors hover:text-orange-500 uppercase tracking-widest",
-                  isScrolled ? "text-slate-600" : "text-white drop-shadow-md hover:text-white"
+                  showTransparent ? "text-white drop-shadow-md hover:text-white" : "text-slate-600"
                 )}
               >
                 {link.name}
@@ -87,12 +90,12 @@ export default function Navbar() {
             
             <div className="h-6 w-px bg-slate-200/20 mx-2" />
             
-            <LanguageSwitcher light={!isScrolled} />
+            <LanguageSwitcher light={showTransparent} />
 
             {role === 'admin' && (
               <Link to="/admin" className={cn(
                 "p-2 transition-colors",
-                isScrolled ? "text-slate-400 hover:text-orange-500" : "text-white/60 hover:text-white"
+                showTransparent ? "text-white/60 hover:text-white" : "text-slate-400 hover:text-orange-500"
               )}>
                 <Settings size={20} />
               </Link>
@@ -108,7 +111,7 @@ export default function Navbar() {
             ) : (
               <Link to="/login" className={cn(
                 "text-xs font-black uppercase tracking-widest px-6 py-3 rounded-xl transition-all shadow-xl",
-                isScrolled ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-white text-slate-900 hover:bg-orange-500 hover:text-white"
+                showTransparent ? "bg-white text-slate-900 hover:bg-orange-500 hover:text-white" : "bg-slate-900 text-white hover:bg-slate-800"
               )}>
                 {t('nav.login')}
               </Link>
@@ -117,12 +120,12 @@ export default function Navbar() {
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center space-x-4">
-            <LanguageSwitcher light={!isScrolled} />
+            <LanguageSwitcher light={showTransparent} />
             <button
               onClick={() => setIsOpen(!isOpen)}
               className={cn(
                 "p-2 rounded-md",
-                isScrolled ? "text-slate-600" : "text-white"
+                showTransparent ? "text-white" : "text-slate-600"
               )}
             >
               {isOpen ? <X size={24} /> : <Menu size={24} />}

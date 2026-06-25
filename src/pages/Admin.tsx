@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
-import { auth, db, storage } from '@/src/lib/firebase';
+import { auth, db, storage, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
-import { Booking, UserProfile, TravelPackage, PackageType, Review, VisaRequest, ChatMessage, ChatSession } from '@/src/types';
+import { Booking, UserProfile, TravelPackage, PackageType, Review, VisaRequest, ChatMessage, ChatSession, HeroSlide } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Filter, Database, Users, TrendingUp, Package, 
@@ -29,7 +29,7 @@ import {
 } from '@/src/services/googleSheetsService';
 import { useToast } from '@/src/components/layout/ToastContext';
 
-type TabType = 'overview' | 'bookings' | 'packages' | 'users' | 'visas' | 'reviews' | 'chat' | 'sheets';
+type TabType = 'overview' | 'bookings' | 'packages' | 'users' | 'visas' | 'reviews' | 'chat' | 'sheets' | 'sliders';
 
 export default function Admin() {
   const toast = useToast();
@@ -38,7 +38,7 @@ export default function Admin() {
 
   // Keep category in sync with sub-tab transitions
   useEffect(() => {
-    if (['overview', 'sheets'].includes(activeTab)) {
+    if (['overview', 'sheets', 'sliders'].includes(activeTab)) {
       setActiveCategory('intel');
     } else if (['bookings', 'chat', 'reviews'].includes(activeTab)) {
       setActiveCategory('ops');
@@ -129,6 +129,12 @@ export default function Admin() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Hero Slide Management State
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  const [isEditingSlide, setIsEditingSlide] = useState(false);
+  const [currentSlideItem, setCurrentSlideItem] = useState<Partial<HeroSlide> | null>(null);
+  const [isUploadingSlideImage, setIsUploadingSlideImage] = useState(false);
+
   // Real-time synchronization
   useEffect(() => {
     setLoading(true);
@@ -137,31 +143,43 @@ export default function Admin() {
     const unsubBookings = onSnapshot(collection(db, 'bookings'), (snap) => {
       setBookings(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Booking[]);
       setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'bookings');
     });
 
     // 2. Packages Sync
     const unsubPackages = onSnapshot(collection(db, 'packages'), (snap) => {
       setPackages(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TravelPackage[]);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'packages');
     });
 
     // 3. Users Sync
     const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
       setUsers(snap.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as UserProfile[]);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'users');
     });
 
     // 4. Visas Sync
     const unsubVisas = onSnapshot(collection(db, 'visaRequests'), (snap) => {
       setVisaRequests(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as VisaRequest[]);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'visaRequests');
     });
 
     // 5. Reviews Sync
     const unsubReviews = onSnapshot(collection(db, 'reviews'), (snap) => {
       setReviews(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Review[]);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'reviews');
     });
 
     // 7. Chat Sessions Sync
     const unsubChats = onSnapshot(query(collection(db, 'chatSessions'), orderBy('updatedAt', 'desc')), (snap) => {
       setChatSessions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ChatSession[]);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'chatSessions');
     });
 
     // 6. Intelligence Pulse Sync (Combined Stream)
@@ -175,6 +193,8 @@ export default function Admin() {
         color: doc.data().success ? 'text-emerald-500' : 'text-rose-500'
       }));
       setPulseEvents(logs);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'aiLogs');
     });
 
     // 8. Google Sheets Settings Sync
@@ -187,6 +207,16 @@ export default function Admin() {
           lastSync: data.lastSync
         });
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings/googleSheets');
+    });
+
+    // 9. Slides Sync
+    const unsubSlides = onSnapshot(collection(db, 'slides'), (snap) => {
+      const slideList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as HeroSlide[];
+      setSlides(slideList.sort((a, b) => (a.order || 0) - (b.order || 0)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'slides');
     });
 
     setSheetsAuthorized(!!getGoogleAccessToken());
@@ -200,6 +230,7 @@ export default function Admin() {
       unsubLogs();
       unsubChats();
       unsubSheets();
+      unsubSlides();
     };
   }, []);
 
@@ -213,6 +244,8 @@ export default function Admin() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setChatMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ChatMessage[]);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `chatSessions/${selectedChat.id}/messages`);
     });
 
     return () => unsubscribe();
@@ -614,6 +647,114 @@ export default function Admin() {
     }
   };
 
+  // Hero Slide Action Handlers
+  const handleSaveSlide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentSlideItem) return;
+    
+    const { tagline, title, description, image, actionText, href, order } = currentSlideItem;
+    if (!tagline || !title || !description || !image || !actionText || !href) {
+      toast.error("Please fill in all required fields including image");
+      return;
+    }
+    
+    try {
+      const slideData = {
+        tagline,
+        title,
+        description,
+        image,
+        actionText,
+        href,
+        order: Number(order) || 0
+      };
+      
+      if (currentSlideItem.id) {
+        await updateDoc(doc(db, 'slides', currentSlideItem.id), slideData);
+        toast.success("Hero slide updated successfully!");
+      } else {
+        await addDoc(collection(db, 'slides'), slideData);
+        toast.success("New hero slide created successfully!");
+      }
+      setIsEditingSlide(false);
+      setCurrentSlideItem(null);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save hero slide.");
+    }
+  };
+
+  const handleDeleteSlide = async (slideId: string) => {
+    if (!window.confirm("Are you sure you want to delete this slide from the homepage hero slider?")) return;
+    try {
+      await deleteDoc(doc(db, 'slides', slideId));
+      toast.success("Hero slide deleted successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete hero slide.");
+    }
+  };
+
+  const handleSlideImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploadingSlideImage(true);
+    try {
+      const storageRef = ref(storage, `slides/image-${Date.now()}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(snapshot.ref);
+      setCurrentSlideItem(prev => prev ? { ...prev, image: url } : { image: url } as Partial<HeroSlide>);
+      toast.success("Slide asset uploaded successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to upload slide image asset.");
+    } finally {
+      setIsUploadingSlideImage(false);
+    }
+  };
+
+  const handleSeedSlides = async () => {
+    try {
+      const initialSlides: Omit<HeroSlide, 'id'>[] = [
+        {
+          tagline: 'Sacred Pilgrimage & Devotion',
+          title: 'Spiritual Journeys & Sacred Guides',
+          description: 'Premium custom Umrah & Haj 2026/2027 packages. Tailored itineraries, luxury lodging located in the immediate courtyard of the Holy Harams, and expert religious guidance.',
+          image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=2070&auto=format&fit=crop',
+          actionText: 'Explore Sacred Packages',
+          href: '/packages/umrah',
+          order: 1
+        },
+        {
+          tagline: 'Global Business Expansion',
+          title: 'EXPO Sponsorship, Booths & Passes',
+          description: 'Unlock premier business engagement. Book corporate exhibition booths, secure elite delegate passes, B2B matchmaking invitations, and get fast-track visa processing with all-inclusive flight tickets.',
+          image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop',
+          actionText: 'Book EXPO Packages',
+          href: '/packages/expo',
+          order: 2
+        },
+        {
+          tagline: 'World-Class European Education',
+          title: 'Study Abroad: Finland & Estonia 2027',
+          description: 'Admission assistance for prestigious Graduate & Masters programs for Summer, Winter, and Autumn 2027 intakes. Seamless university admission support, documentation profiling, and high-success study visa coaching.',
+          image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop',
+          actionText: 'Explore Study Abroad',
+          href: '/packages/study-abroad',
+          order: 3
+        }
+      ];
+      for (const slide of initialSlides) {
+        await addDoc(collection(db, 'slides'), slide);
+      }
+      toast.success("Successfully seeded default banner slides!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Seeding slider collection failed.");
+    }
+  };
+
   const handleAdminDocUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'passport' | 'idCard') => {
     const file = e.target.files?.[0];
     if (!file || !selectedBooking) return;
@@ -853,7 +994,8 @@ export default function Admin() {
           <div className="flex flex-wrap gap-2 bg-slate-100 p-1.5 rounded-[2rem] w-full">
             {activeCategory === 'intel' && [
               { id: 'overview', icon: BarChart3, label: 'Analytics Dashboard Overview' },
-              { id: 'sheets', icon: FileText, label: 'Google Sheets Integration & Sync' }
+              { id: 'sheets', icon: FileText, label: 'Google Sheets Integration & Sync' },
+              { id: 'sliders', icon: ImageIcon, label: 'Hero Banners & Slides Manager' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -1494,9 +1636,12 @@ export default function Admin() {
                           price: 0,
                           duration: '',
                           category: 'Standard',
+                          currency: 'PKR',
                           itinerary: [''],
                           images: ['https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?auto=format&fit=crop&w=800&q=80'],
-                          inventoryCount: 10
+                          inventoryCount: 10,
+                          featured: false,
+                          isTrending: false
                         });
                         setIsEditing(true);
                       }}
@@ -2114,6 +2259,350 @@ export default function Admin() {
               </div>
             </div>
           )}
+
+          {activeTab === 'sliders' && (
+            <div className="space-y-10">
+              {/* Sliders Administration Header */}
+              <div className="bg-slate-950 text-white rounded-[3rem] p-10 relative overflow-hidden group shadow-2xl">
+                <div className="absolute -inset-10 bg-gradient-to-r from-orange-500/20 to-amber-500/20 blur-3xl opacity-50 group-hover:opacity-75 transition-all duration-1000" />
+                
+                <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                  <div>
+                    <span className="px-4 py-1.5 bg-orange-500/10 text-orange-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-orange-500/20">
+                      Wanderlust Portal Core
+                    </span>
+                    <h2 className="text-4xl font-bold mt-4 tracking-tight">Homepage Hero Slider</h2>
+                    <p className="text-slate-400 text-sm mt-2 max-w-xl font-medium leading-relaxed">
+                      Manage visual banner slides shown on the main user landing page. Link directly to specific service listings, visa systems, or custom URLs.
+                    </p>
+                  </div>
+                  
+                  {!isEditingSlide && (
+                    <div className="flex flex-wrap gap-3">
+                      <button 
+                        onClick={handleSeedSlides}
+                        type="button"
+                        className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-black uppercase tracking-widest border border-white/15 transition-all"
+                      >
+                        Reset Defaults
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setCurrentSlideItem({
+                            tagline: 'New Adventure Starts Here',
+                            title: 'Discover Pure Perfection',
+                            description: 'Bespoke high-end itineraries designed by travel experts.',
+                            image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=2070&auto=format&fit=crop',
+                            actionText: 'View Package Details',
+                            href: '/packages/all',
+                            order: (slides.length + 1)
+                          });
+                          setIsEditingSlide(true);
+                        }}
+                        className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:shadow-lg hover:shadow-orange-500/25 transition-all flex items-center space-x-2"
+                      >
+                        <Plus size={14} />
+                        <span>Add Hero Banner</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Form: Add/Edit Slide */}
+              {isEditingSlide && currentSlideItem && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-xl shadow-slate-100/50"
+                >
+                  <div className="flex justify-between items-center mb-10 border-b border-slate-50 pb-6">
+                    <div>
+                      <h3 className="text-xl font-bold tracking-tight text-slate-900">
+                        {currentSlideItem.id ? 'Modify Hero Banner Specifications' : 'Compose New Hero Space'}
+                      </h3>
+                      <p className="text-xs font-medium text-slate-400">Fill visual copy text and mapping attributes.</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setIsEditingSlide(false);
+                        setCurrentSlideItem(null);
+                      }}
+                      className="p-2.5 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-xl transition-all"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Dynamic Package Linker Mechanism */}
+                  <div className="mb-10 p-6 bg-slate-50 border border-slate-100 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-800 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-orange-500" />
+                      <span>Dynamic Mechanism: Source from Live Travel Packages</span>
+                    </p>
+                    <p className="text-[11px] text-slate-400 mb-4 font-medium leading-relaxed">
+                      Select an existing inventory package from the database catalog to instantly map and overlay its title, description, and link variables inside this slide.
+                    </p>
+                    <select
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        const pkg = packages.find(p => p.id === val);
+                        if (pkg) {
+                          setCurrentSlideItem(prev => ({
+                            ...prev,
+                            tagline: `Featured ${pkg.category}`,
+                            title: pkg.title,
+                            description: pkg.description.substring(0, 160) + '...',
+                            image: pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=2070&auto=format&fit=crop',
+                            actionText: 'Book This Package Now',
+                            href: `/package/${pkg.id}`
+                          }));
+                          toast.success("Details successfully imported from travel package catalogs!");
+                        }
+                      }}
+                      value=""
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none text-xs font-bold text-slate-700 focus:border-orange-500 transition-all shadow-sm"
+                    >
+                      <option value="">-- Choose target catalog to auto-fill --</option>
+                      {packages.map(p => (
+                        <option key={p.id} value={p.id}>
+                          [{p.category.toUpperCase()}] {p.title} ({p.currency} {p.price.toLocaleString()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <form onSubmit={handleSaveSlide} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Tagline */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-3">Slide Tagline (Subheader)</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={currentSlideItem.tagline || ''} 
+                        onChange={(e) => setCurrentSlideItem({ ...currentSlideItem, tagline: e.target.value })}
+                        className="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-orange-500/10 text-xs font-medium text-slate-800"
+                        placeholder="e.g. Experience the Extraordinary"
+                      />
+                    </div>
+
+                    {/* Order */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-3">Sorting Weight (Order Rank)</label>
+                      <input 
+                        type="number" 
+                        required
+                        value={currentSlideItem.order || 0} 
+                        onChange={(e) => setCurrentSlideItem({ ...currentSlideItem, order: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-orange-500/10 text-xs font-medium text-slate-800"
+                        placeholder="e.g. 1"
+                      />
+                    </div>
+
+                    {/* Title */}
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-3">Marketing Callout Title</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={currentSlideItem.title || ''} 
+                        onChange={(e) => setCurrentSlideItem({ ...currentSlideItem, title: e.target.value })}
+                        className="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-orange-500/10 text-sm font-bold text-slate-800"
+                        placeholder="e.g. Spiritual Journeys & Sacred Guides"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-3">Slide Copytext / Description</label>
+                      <textarea 
+                        rows={3}
+                        required
+                        value={currentSlideItem.description || ''} 
+                        onChange={(e) => setCurrentSlideItem({ ...currentSlideItem, description: e.target.value })}
+                        className="w-full bg-slate-50 border-none rounded-xl p-5 outline-none focus:ring-2 focus:ring-orange-500/10 text-xs font-medium leading-relaxed text-slate-800"
+                        placeholder="e.g. Premium custom Umrah & Haj 2026 packages. Tailored itineraries, luxury lodging..."
+                      />
+                    </div>
+
+                    {/* Action button CTA label */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-3">Action Button Label (CTA)</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={currentSlideItem.actionText || ''} 
+                        onChange={(e) => setCurrentSlideItem({ ...currentSlideItem, actionText: e.target.value })}
+                        className="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-orange-500/10 text-xs font-medium text-slate-800"
+                        placeholder="e.g. Explore Umrah Packages"
+                      />
+                    </div>
+
+                    {/* Direct redirection Link */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-3">Redirect Route Path (e.g. /packages/umrah)</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={currentSlideItem.href || ''} 
+                        onChange={(e) => setCurrentSlideItem({ ...currentSlideItem, href: e.target.value })}
+                        className="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-orange-500/10 text-xs font-medium text-slate-800"
+                        placeholder="e.g. /packages/umrah"
+                      />
+                    </div>
+
+                    {/* High-res Banner Image */}
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-widest mb-3">Banner Asset (AVIF/WebP, Resolution 2000x900)</label>
+                      <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <div className="w-full sm:w-1/3 h-32 rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 relative shrink-0">
+                          {currentSlideItem.image ? (
+                            <img src={currentSlideItem.image} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                              <ImageIcon size={28} />
+                              <span className="text-[9px] mt-1 uppercase font-bold">No Image Banner</span>
+                            </div>
+                          )}
+                          {isUploadingSlideImage && (
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center text-white text-xs font-bold">
+                              <RotateCcw className="animate-spin mr-1" size={14} />
+                              Uploading...
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="w-full space-y-3">
+                          <input 
+                            type="text" 
+                            required
+                            value={currentSlideItem.image || ''} 
+                            onChange={(e) => setCurrentSlideItem({ ...currentSlideItem, image: e.target.value })}
+                            className="w-full bg-slate-50 border-none rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-orange-500/10 text-xs font-medium text-slate-800"
+                            placeholder="Paste external slide asset URL directly or upload local file"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => document.getElementById('slide-image-file-picker')?.click()}
+                              className="px-5 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 transition-colors shadow-lg shadow-slate-900/10 flex items-center gap-1.5"
+                            >
+                              <Upload size={12} />
+                              <span>Upload Media asset</span>
+                            </button>
+                            <input 
+                              type="file" 
+                              id="slide-image-file-picker" 
+                              accept="image/*"
+                              className="hidden" 
+                              onChange={handleSlideImageUpload} 
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="md:col-span-2 flex justify-end space-x-3 pt-6 border-t border-slate-50">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditingSlide(false);
+                          setCurrentSlideItem(null);
+                        }}
+                        className="px-6 py-3.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-8 py-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:shadow-lg hover:shadow-orange-500/25 transition-all"
+                      >
+                        Save Dynamic Slider
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* Slider Lists Display */}
+              {!isEditingSlide && (
+                <div className="space-y-6">
+                  {slides.length === 0 ? (
+                    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-16 text-center shadow-sm">
+                      <ImageIcon className="mx-auto text-slate-200 mb-4" size={56} />
+                      <h4 className="text-lg font-bold text-slate-800">No Hero Banner Slides Registered</h4>
+                      <p className="text-slate-400 text-xs mt-1 mb-8 max-w-sm mx-auto leading-relaxed">
+                        There are no active dynamic slides currently initialized. Bootstrap the defaults or insert custom visual banners.
+                      </p>
+                      <button 
+                        onClick={handleSeedSlides}
+                        className="px-8 py-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-orange-500/20"
+                      >
+                        Seed Default Visual Slider
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {slides.map((slide, sIdx) => (
+                        <div 
+                          key={slide.id}
+                          className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+                        >
+                          <div>
+                            <div className="relative h-44 bg-slate-900 overflow-hidden">
+                              <img src={slide.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
+                              <div className="absolute top-4 left-4 bg-black/50 text-white px-2.5 py-1 rounded-md text-[10px] font-mono font-bold select-none backdrop-blur-sm">
+                                RANK #{slide.order || sIdx + 1}
+                              </div>
+                            </div>
+                            
+                            <div className="p-6 space-y-3">
+                              <span className="text-[9px] font-black tracking-widest text-orange-500 uppercase block">{slide.tagline}</span>
+                              <h4 className="text-sm font-black text-slate-900 leading-snug line-clamp-2">{slide.title}</h4>
+                              <p className="text-xs text-slate-400 leading-relaxed font-semibold line-clamp-3">{slide.description}</p>
+                              
+                              <div className="space-y-1.5 pt-3 border-t border-slate-50">
+                                <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                                  <span className="text-slate-900 uppercase">Button:</span>
+                                  <span>{slide.actionText}</span>
+                                </p>
+                                <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                                  <span className="text-slate-900 uppercase">Target:</span>
+                                  <span className="font-mono bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded leading-none">{slide.href}</span>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="p-6 bg-slate-50/50 border-t border-slate-100/50 flex space-x-2 shrink-0">
+                            <button
+                              onClick={() => {
+                                setCurrentSlideItem(slide);
+                                setIsEditingSlide(true);
+                              }}
+                              className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
+                            >
+                              <Edit3 size={11} />
+                              <span>Update</span>
+                            </button>
+                            <button
+                              onClick={() => slide.id && handleDeleteSlide(slide.id)}
+                              className="p-2.5 bg-rose-50 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-colors"
+                              aria-label="Delete Banner Slide"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
         </div>
@@ -2180,14 +2669,26 @@ export default function Admin() {
                           <div className="space-y-2">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                                <TrendingUp size={12} className="mr-2" />
-                               Price (PKR)
+                               Price
                             </label>
-                            <input 
-                              type="number"
-                              className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all"
-                              value={currentPackage.price}
-                              onChange={(e) => setCurrentPackage({ ...currentPackage, price: Number(e.target.value) })}
-                            />
+                            <div className="flex space-x-2">
+                              <select 
+                                className="w-24 bg-slate-50 border border-slate-100 rounded-2xl px-3 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all appearance-none"
+                                value={currentPackage.currency || 'PKR'}
+                                onChange={(e) => setCurrentPackage({ ...currentPackage, currency: e.target.value })}
+                              >
+                                <option value="PKR">PKR</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="GBP">GBP</option>
+                              </select>
+                              <input 
+                                type="number"
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all"
+                                value={currentPackage.price}
+                                onChange={(e) => setCurrentPackage({ ...currentPackage, price: Number(e.target.value) })}
+                              />
+                            </div>
                           </div>
                           <div className="space-y-2">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
@@ -2200,6 +2701,68 @@ export default function Admin() {
                               value={currentPackage.duration}
                               onChange={(e) => setCurrentPackage({ ...currentPackage, duration: e.target.value })}
                             />
+                          </div>
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                               <Tag size={12} className="mr-2" />
+                               Category
+                            </label>
+                            <input 
+                              className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all"
+                              placeholder="e.g. Premium, Economy"
+                              value={currentPackage.category || ''}
+                              onChange={(e) => setCurrentPackage({ ...currentPackage, category: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                               <Layers size={12} className="mr-2" />
+                               Inventory Count
+                            </label>
+                            <input 
+                              type="number"
+                              className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all"
+                              value={currentPackage.inventoryCount || 0}
+                              onChange={(e) => setCurrentPackage({ ...currentPackage, inventoryCount: Number(e.target.value) })}
+                            />
+                          </div>
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">Featured Package</label>
+                            <button
+                              type="button"
+                              onClick={() => setCurrentPackage({ ...currentPackage, featured: !currentPackage.featured })}
+                              className={cn(
+                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                                currentPackage.featured ? 'bg-orange-500' : 'bg-slate-300'
+                              )}
+                            >
+                              <span className={cn(
+                                "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                currentPackage.featured ? 'translate-x-6' : 'translate-x-1'
+                              )} />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">Trending Slider</label>
+                            <button
+                              type="button"
+                              onClick={() => setCurrentPackage({ ...currentPackage, isTrending: !currentPackage.isTrending })}
+                              className={cn(
+                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                                currentPackage.isTrending ? 'bg-orange-500' : 'bg-slate-300'
+                              )}
+                            >
+                              <span className={cn(
+                                "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                currentPackage.isTrending ? 'translate-x-6' : 'translate-x-1'
+                              )} />
+                            </button>
                           </div>
                        </div>
                     </div>
@@ -2264,8 +2827,9 @@ export default function Admin() {
                           />
                           <div className="flex items-center space-x-2">
                             <input 
+                              id="add-image-link-input"
                               className="flex-grow bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-orange-500 transition-all"
-                              placeholder="Or paste image URL..."
+                              placeholder="Or paste image URL here..."
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -2277,7 +2841,141 @@ export default function Admin() {
                                 }
                               }}
                             />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const input = document.getElementById('add-image-link-input') as HTMLInputElement;
+                                if (input && input.value) {
+                                  setCurrentPackage({ ...currentPackage, images: [...(currentPackage.images || []), input.value] });
+                                  input.value = '';
+                                }
+                              }}
+                              className="px-4 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-orange-500 transition-colors"
+                            >
+                              Add Link
+                            </button>
                           </div>
+                       </div>
+                       
+                       <div className="space-y-4">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                             <Layers size={12} className="mr-2" />
+                             Itinerary Details
+                          </label>
+                          {currentPackage.itineraryDetails?.map((detail, idx) => (
+                            <div key={idx} className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 relative">
+                              <button 
+                                onClick={() => {
+                                  const newDetails = [...(currentPackage.itineraryDetails || [])];
+                                  newDetails.splice(idx, 1);
+                                  setCurrentPackage({ ...currentPackage, itineraryDetails: newDetails });
+                                }}
+                                className="absolute top-4 right-4 text-slate-400 hover:text-red-500"
+                              >
+                                <XCircle size={16} />
+                              </button>
+                              <input 
+                                type="text"
+                                className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-orange-500"
+                                placeholder="Day / Title (e.g. Day 1: Arrival)"
+                                value={detail.title}
+                                onChange={(e) => {
+                                  const newDetails = [...(currentPackage.itineraryDetails || [])];
+                                  newDetails[idx].title = e.target.value;
+                                  setCurrentPackage({ ...currentPackage, itineraryDetails: newDetails });
+                                }}
+                              />
+                              <textarea 
+                                rows={3}
+                                className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-500 resize-none"
+                                placeholder="Description..."
+                                value={detail.description}
+                                onChange={(e) => {
+                                  const newDetails = [...(currentPackage.itineraryDetails || [])];
+                                  newDetails[idx].description = e.target.value;
+                                  setCurrentPackage({ ...currentPackage, itineraryDetails: newDetails });
+                                }}
+                              />
+                            </div>
+                          ))}
+                          <button 
+                            onClick={() => setCurrentPackage({ 
+                              ...currentPackage, 
+                              itineraryDetails: [...(currentPackage.itineraryDetails || []), { title: '', description: '' }] 
+                            })}
+                            className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 transition-colors text-xs uppercase tracking-wider"
+                          >
+                            + Add Itinerary Item
+                          </button>
+                       </div>
+
+                       <div className="space-y-4">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                             <Info size={12} className="mr-2" />
+                             Additional Information Cards
+                          </label>
+                          {currentPackage.additionalInfo?.map((info, idx) => (
+                            <div key={idx} className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 relative">
+                              <button 
+                                onClick={() => {
+                                  const newInfo = [...(currentPackage.additionalInfo || [])];
+                                  newInfo.splice(idx, 1);
+                                  setCurrentPackage({ ...currentPackage, additionalInfo: newInfo });
+                                }}
+                                className="absolute top-4 right-4 text-slate-400 hover:text-red-500"
+                              >
+                                <XCircle size={16} />
+                              </button>
+                              <input 
+                                type="text"
+                                className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-orange-500"
+                                placeholder="Card Title (e.g. Visa Requirements)"
+                                value={info.title}
+                                onChange={(e) => {
+                                  const newInfo = [...(currentPackage.additionalInfo || [])];
+                                  newInfo[idx].title = e.target.value;
+                                  setCurrentPackage({ ...currentPackage, additionalInfo: newInfo });
+                                }}
+                              />
+                              <textarea 
+                                rows={3}
+                                className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-500 resize-none"
+                                placeholder="Detailed information..."
+                                value={info.description}
+                                onChange={(e) => {
+                                  const newInfo = [...(currentPackage.additionalInfo || [])];
+                                  newInfo[idx].description = e.target.value;
+                                  setCurrentPackage({ ...currentPackage, additionalInfo: newInfo });
+                                }}
+                              />
+                            </div>
+                          ))}
+                          <button 
+                            onClick={() => setCurrentPackage({ 
+                              ...currentPackage, 
+                              additionalInfo: [...(currentPackage.additionalInfo || []), { title: '', description: '' }] 
+                            })}
+                            className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 transition-colors text-xs uppercase tracking-wider"
+                          >
+                            + Add Info Card
+                          </button>
+                       </div>
+                       
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                             <Layers size={12} className="mr-2" />
+                             Itinerary / Features (One per line)
+                          </label>
+                          <textarea 
+                            rows={3}
+                            className="w-full bg-slate-50 border border-slate-100 rounded-[1rem] px-5 py-4 text-sm font-medium outline-none focus:border-orange-500 transition-all resize-none leading-relaxed"
+                            placeholder="Day 1: Arrival...&#10;Day 2: City Tour..."
+                            value={currentPackage.itinerary?.join('\n') || ''}
+                            onChange={(e) => setCurrentPackage({ 
+                              ...currentPackage, 
+                              itinerary: e.target.value.split('\n').filter(line => line.trim() !== '')
+                            })}
+                          />
                        </div>
                        
                        <div className="space-y-2">
@@ -2517,7 +3215,65 @@ export default function Admin() {
                             <div className="flex justify-between items-start">
                               <div>
                                 <p className="font-bold text-slate-900 uppercase text-sm tracking-tight">{p.name}</p>
-                                <p className="text-xs text-slate-400 font-medium">Passport: <span className="font-mono text-slate-600">{p.passportNumber || "MISSING"}</span></p>
+                                <p className="text-xs text-slate-400 font-medium">Passport: <span className="font-mono text-slate-600 font-semibold">{p.passportNumber || "MISSING"}</span></p>
+                                
+                                {/* Passport Scan Metadata */}
+                                {(p.dob || p.gender || p.nationality || p.passportExpiry || p.passportIssueDate || p.issuingCountry) && (
+                                  <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] text-slate-500 font-semibold">
+                                    {p.dob && (
+                                      <div>
+                                        <span className="text-slate-400 font-bold uppercase text-[9px] block">Date of Birth</span>
+                                        <span className="text-slate-700">{p.dob}</span>
+                                      </div>
+                                    )}
+                                    {p.gender && (
+                                      <div>
+                                        <span className="text-slate-400 font-bold uppercase text-[9px] block">Gender</span>
+                                        <span className="text-slate-700">{p.gender}</span>
+                                      </div>
+                                    )}
+                                    {p.nationality && (
+                                      <div>
+                                        <span className="text-slate-400 font-bold uppercase text-[9px] block">Nationality</span>
+                                        <span className="text-slate-700">{p.nationality}</span>
+                                      </div>
+                                    )}
+                                    {p.issuingCountry && (
+                                      <div>
+                                        <span className="text-slate-400 font-bold uppercase text-[9px] block">Issuing Country</span>
+                                        <span className="text-slate-700">{p.issuingCountry}</span>
+                                      </div>
+                                    )}
+                                    {p.passportIssueDate && (
+                                      <div>
+                                        <span className="text-slate-400 font-bold uppercase text-[9px] block">Issue Date</span>
+                                        <span className="text-slate-700">{p.passportIssueDate}</span>
+                                      </div>
+                                    )}
+                                    {p.passportExpiry && (
+                                      <div>
+                                        <span className="text-slate-400 font-bold uppercase text-[9px] block">Expiry Date</span>
+                                        <span className="text-slate-700">{p.passportExpiry}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {(p.studyProgram || p.studyField) && (
+                                  <p className="text-xs text-slate-400 font-medium mt-1">Study: <span className="text-sky-600">{p.studyProgram} - {p.studyField}</span></p>
+                                )}
+                                {p.academicBackground && (
+                                  <p className="text-xs text-slate-400 font-medium mt-1">Academics: <span className="text-sky-600">{p.academicBackground}</span></p>
+                                )}
+                                {(p.companyName || p.designation) && (
+                                  <p className="text-xs text-slate-400 font-medium mt-1">Company: <span className="text-sky-600">{p.companyName} ({p.designation})</span></p>
+                                )}
+                                {p.exhibitorProfile && (
+                                  <p className="text-xs text-slate-400 font-medium mt-1">Profile: <span className="text-sky-600">{p.exhibitorProfile}</span></p>
+                                )}
+                                {p.travelHistory && (
+                                  <p className="text-xs text-slate-400 font-medium mt-1">History: <span className="text-sky-600">{p.travelHistory}</span></p>
+                                )}
                               </div>
                               <span className="text-[10px] font-black bg-white px-3 py-1 rounded-lg border border-slate-100 shadow-sm text-slate-400">{p.age} YRS</span>
                             </div>

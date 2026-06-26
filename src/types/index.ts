@@ -73,6 +73,8 @@ export interface Booking {
   notes?: string;
   passportUrl?: string;
   idCardUrl?: string;
+  preferredStartDate?: string;
+  preferredEndDate?: string;
 }
 
 export interface VisaRequest {

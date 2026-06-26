@@ -4,11 +4,13 @@ import { db, auth } from '@/src/lib/firebase';
 import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { TravelPackage, Booking, Passenger } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User } from 'lucide-react';
+import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { extractPassengerFromPassport } from '@/src/services/aiService';
 import { useToast } from '@/src/components/layout/ToastContext';
 import DynamicPassengerFields from '@/src/components/DynamicPassengerFields';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 export default function PackageDetails() {
   const toast = useToast();
@@ -37,6 +39,8 @@ export default function PackageDetails() {
   const [paymentMethod, setPaymentMethod] = useState('bank');
   const [passportFile, setPassportFile] = useState<File | null>(null);
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatusText, setUploadStatusText] = useState('');
@@ -176,9 +180,32 @@ export default function PackageDetails() {
         contactPhone: contactInfo.phone,
         contactAddress: contactInfo.address,
         notes: driveFileIds.length > 0 ? `Uploaded ${driveFileIds.length} document(s) to Google Drive.` : '',
+        preferredStartDate: startDate ? startDate.toISOString().split('T')[0] : '',
+        preferredEndDate: endDate ? endDate.toISOString().split('T')[0] : '',
       };
 
       await addDoc(collection(db, 'bookings'), bookingData);
+
+      // Trigger automated booking confirmation email
+      try {
+        await fetch('/api/booking-confirmation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: contactInfo.email || auth.currentUser.email,
+            booking: {
+              ...bookingData,
+              preferredStartDate: startDate ? startDate.toLocaleDateString() : '',
+              preferredEndDate: endDate ? endDate.toLocaleDateString() : '',
+            }
+          })
+        });
+      } catch (emailErr) {
+        console.error("Failed to send booking confirmation email:", emailErr);
+      }
+
       setStep(4); // Success
       toast.success("Package booked successfully!");
     } catch (e) {
@@ -373,6 +400,45 @@ export default function PackageDetails() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
                           value={contactInfo.address}
                           onChange={(e) => setContactInfo({...contactInfo, address: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Preferred Travel Dates Section */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center">
+                       <Calendar size={16} className="mr-2 text-orange-500" />
+                       Preferred Travel Dates
+                    </h4>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Select your preferred departure and return dates for this {(pkg.type === 'umrah' || pkg.type === 'haj') ? 'spiritual journey' : 'trip'}.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="relative">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Departure Date</label>
+                        <DatePicker
+                          selected={startDate}
+                          onChange={(date: Date | null) => setStartDate(date)}
+                          selectsStart
+                          startDate={startDate}
+                          endDate={endDate}
+                          minDate={new Date()}
+                          placeholderText="Select Departure Date"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all text-sm font-semibold text-slate-700 cursor-pointer"
+                        />
+                      </div>
+                      <div className="relative">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Return Date</label>
+                        <DatePicker
+                          selected={endDate}
+                          onChange={(date: Date | null) => setEndDate(date)}
+                          selectsEnd
+                          startDate={startDate}
+                          endDate={endDate}
+                          minDate={startDate || new Date()}
+                          placeholderText="Select Return Date"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-500/20 transition-all text-sm font-semibold text-slate-700 cursor-pointer"
                         />
                       </div>
                     </div>
@@ -658,6 +724,14 @@ export default function PackageDetails() {
                           <span className="text-white/60">Base Price</span>
                           <span className="font-bold">{formatCurrency(pkg.price)}</span>
                         </div>
+                        {startDate && endDate && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-white/60">Preferred Dates</span>
+                            <span className="font-bold text-orange-400 text-sm">
+                              {startDate.toLocaleDateString()} - {endDate.toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
                         <div className="pt-4 border-t border-white/10 flex justify-between items-center text-xl">
                           <span className="font-bold">Total Amount</span>
                           <span className="font-bold text-orange-500">{formatCurrency(totalAmount)}</span>

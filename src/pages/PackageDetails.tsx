@@ -5,7 +5,7 @@ import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { TravelPackage, Booking, Passenger } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar, FileText, Download } from 'lucide-react';
-import { cn, formatCurrency } from '@/src/lib/utils';
+import { cn, formatCurrency, optimizeImageUrl, compressImage } from '@/src/lib/utils';
 import { extractPassengerFromPassport } from '@/src/services/aiService';
 import { useToast } from '@/src/components/layout/ToastContext';
 import DynamicPassengerFields from '@/src/components/DynamicPassengerFields';
@@ -350,18 +350,10 @@ export default function PackageDetails() {
     setScanningIndex(index);
     
     try {
-      // Convert to base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]); // Only data part
-        };
-      });
-      reader.readAsDataURL(file);
-      const base64 = await base64Promise;
+      // Compress image client-side before sending to AI (faster and fits body limits perfectly)
+      const { base64, mimeType } = await compressImage(file, 1200, 0.85);
 
-      const result = await extractPassengerFromPassport(base64, file.type);
+      const result = await extractPassengerFromPassport(base64, mimeType);
       if (result) {
         handlePassengerChange(index, 'name', result.name);
         handlePassengerChange(index, 'passportNumber', result.passportNumber);
@@ -398,15 +390,16 @@ export default function PackageDetails() {
   };
 
   const uploadFileToBackend = async (file: File): Promise<string> => {
-    const base64 = await fileToBase64(file);
+    // Compress image client-side before uploading (faster, saves storage and bandwidth)
+    const { base64, mimeType } = await compressImage(file, 1500, 0.85);
     const response = await fetch("/api/upload", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        fileName: file.name,
-        fileType: file.type,
+        fileName: file.type.startsWith('image/') ? `${file.name.split('.')[0]}.jpg` : file.name,
+        fileType: mimeType,
         base64,
       }),
     });
@@ -606,7 +599,7 @@ export default function PackageDetails() {
                  key="step1"
                >
                  <div className="rounded-3xl overflow-hidden mb-8 h-[400px]">
-                    <img src={pkg.images[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa'} alt={`${pkg.title || 'Package'} - Main view`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src={optimizeImageUrl(pkg.images[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 1200, 80)} alt={`${pkg.title || 'Package'} - Main view`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                  </div>
                  <div className="prose prose-slate max-w-none">
                     <h3 className="text-2xl font-bold mb-4">About this package</h3>

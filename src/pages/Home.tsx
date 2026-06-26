@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, MapPin, Calendar, Users, ArrowRight, Shield, Star, CheckCircle2, Plane, Landmark, Compass, ShieldCheck, Map, Briefcase, GraduationCap, ChevronLeft, ChevronRight, HelpCircle, FileText } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/src/lib/utils';
+import { cn, optimizeImageUrl } from '@/src/lib/utils';
 import { useState, useEffect } from 'react';
 import { packageService } from '@/src/services/api';
 import { TravelPackage, HeroSlide } from '@/src/types';
@@ -197,9 +197,11 @@ export default function Home() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 1 }}
-                src={activeSlides[currentSlide]?.image} 
+                src={optimizeImageUrl(activeSlides[currentSlide]?.image, 1600, 80)} 
+                alt={activeSlides[currentSlide]?.title || "Spiritual and Tour Package Cover"}
                 className="absolute inset-0 w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                fetchPriority="high"
               />
             )}
           </AnimatePresence>
@@ -431,10 +433,11 @@ export default function Home() {
                         className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100"
                       >
                         <img 
-                          src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa'} 
+                          src={optimizeImageUrl(pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 100, 70)} 
                           alt={pkg.title} 
                           className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
                           referrerPolicy="no-referrer"
+                          loading="lazy"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 mb-0.5">
@@ -542,11 +545,12 @@ export default function Home() {
                 >
                   {!hasError && (
                     <img 
-                      src={cat.img} 
+                      src={optimizeImageUrl(cat.img, 600, 75)} 
                       onError={() => setImageErrors(prev => ({ ...prev, [cat.id]: true }))}
                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                       referrerPolicy="no-referrer" 
                       alt={cat.title}
+                      loading="lazy"
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/30 to-transparent group-hover:via-slate-950/20 transition-all duration-300" />
@@ -604,9 +608,9 @@ export default function Home() {
               >
                 <div>
                   <div className="relative h-64 overflow-hidden">
-                    <img src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=800&auto=format&fit=crop'} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" loading="lazy" />
+                    <img src={optimizeImageUrl(pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 600, 75)} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" loading="lazy" />
                     <div className="absolute top-4 left-4">
-                      <span className="px-3 apy-1 bg-white/95 backdrop-blur-sm text-emerald-700 text-[10px] font-black rounded-full uppercase tracking-wider shadow-sm border border-emerald-500/10">
+                      <span className="px-3 py-1 bg-white/95 backdrop-blur-sm text-emerald-700 text-[10px] font-black rounded-full uppercase tracking-wider shadow-sm border border-emerald-500/10">
                         {pkg.category} Package
                       </span>
                     </div>
@@ -758,7 +762,7 @@ export default function Home() {
               >
                 <div className="space-y-5">
                   <div className="relative h-44 rounded-2xl overflow-hidden bg-slate-900 shadow-sm">
-                    <img src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop'} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" loading="lazy" />
+                    <img src={optimizeImageUrl(pkg.images?.[0] || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab', 600, 75)} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" loading="lazy" />
                     <span className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white font-mono text-[9px] font-black uppercase rounded-md leading-none shadow-md">
                       {pkg.category.toUpperCase()}
                     </span>
@@ -930,7 +934,7 @@ export default function Home() {
                   className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-xl shadow-slate-100/50 group"
                 >
                   <div className="relative h-64 overflow-hidden">
-                     <img src={pkg.images[0]} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" loading="lazy" />
+                     <img src={optimizeImageUrl(pkg.images[0], 600, 75)} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" loading="lazy" />
                      <div className="absolute top-4 left-4">
                        <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-slate-900 text-[10px] font-bold rounded-full uppercase tracking-wider">{pkg.category}</span>
                      </div>
@@ -995,7 +999,7 @@ export default function Home() {
 
             <div className="relative">
               <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl h-[500px]">
-                <img src="https://images.unsplash.com/photo-1544027993-37dbfe43562a?auto=format&fit=crop&w=1200&q=80" alt="Agility Travels - Trusted Travel Partner Group" className="w-full h-full object-cover" />
+                <img src={optimizeImageUrl("https://images.unsplash.com/photo-1544027993-37dbfe43562a", 800, 75)} alt="Agility Travels - Trusted Travel Partner Group" className="w-full h-full object-cover" loading="lazy" />
               </div>
               <div className="absolute -bottom-10 -right-10 bg-orange-500 w-64 p-8 rounded-3xl shadow-2xl z-20">
                 <p className="text-4xl font-bold text-white mb-2">10k+</p>

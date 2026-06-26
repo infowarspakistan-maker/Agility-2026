@@ -8,7 +8,7 @@ import {
   Map, Shield, Briefcase, GraduationCap, SlidersHorizontal, RotateCcw, 
   ChevronDown, Check, X, ArrowUpDown, Tag
 } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { cn, optimizeImageUrl } from '@/src/lib/utils';
 
 const CATEGORY_TABS = [
   { id: 'all', name: 'All Services', path: '/packages/all', icon: Globe },
@@ -390,10 +390,11 @@ export default function Packages() {
                     <div>
                       <div className="relative h-56 overflow-hidden">
                          <img 
-                           src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa'} 
+                           src={optimizeImageUrl(pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 600, 75)} 
                            alt={pkg.title}
                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                            referrerPolicy="no-referrer" 
+                           loading="lazy"
                          />
                          <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-slate-900">
                            {pkg.category}

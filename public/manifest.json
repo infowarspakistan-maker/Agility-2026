@@ -1,0 +1,43 @@
+{
+  "name": "Agility Travels",
+  "short_name": "Agility",
+  "description": "Premium Umrah, Haj, Corporate Expo, and Adventure tour packages.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["travel", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Umrah Packages",
+      "url": "/packages/umrah",
+      "icons": [{ "src": "/icon-512.jpg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Haj Packages",
+      "url": "/packages/haj",
+      "icons": [{ "src": "/icon-512.jpg", "sizes": "192x192" }]
+    }
+  ]
+}

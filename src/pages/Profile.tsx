@@ -147,15 +147,59 @@ export default function Profile() {
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]); // Only data part
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const uploadFileToBackend = async (file: File): Promise<string> => {
+    const base64 = await fileToBase64(file);
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type,
+        base64,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server upload returned status ${response.status}`);
+    }
+
+    const json = await response.json();
+    if (!json.success || !json.url) {
+      throw new Error(json.error || "Failed to upload to server");
+    }
+
+    return json.url;
+  };
+
   const handlePassportUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !auth.currentUser) return;
 
     setIsUploadingPassport(true);
     try {
-      const storageRef = ref(storage, `passports/${auth.currentUser.uid}-${Date.now()}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      let downloadURL = '';
+      try {
+        const storageRef = ref(storage, `passports/${auth.currentUser.uid}-${Date.now()}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        downloadURL = await getDownloadURL(snapshot.ref);
+      } catch (storageError) {
+        console.warn("Firebase Storage failed, trying server-side upload fallback:", storageError);
+        downloadURL = await uploadFileToBackend(file);
+      }
       
       const userRef = doc(db, 'users', auth.currentUser.uid);
       await updateDoc(userRef, { passportCopyUrl: downloadURL });
@@ -176,9 +220,15 @@ export default function Profile() {
 
     setIsUploadingID(true);
     try {
-      const storageRef = ref(storage, `id_cards/${auth.currentUser.uid}-${Date.now()}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      let downloadURL = '';
+      try {
+        const storageRef = ref(storage, `id_cards/${auth.currentUser.uid}-${Date.now()}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        downloadURL = await getDownloadURL(snapshot.ref);
+      } catch (storageError) {
+        console.warn("Firebase Storage failed, trying server-side upload fallback:", storageError);
+        downloadURL = await uploadFileToBackend(file);
+      }
       
       const userRef = doc(db, 'users', auth.currentUser.uid);
       await updateDoc(userRef, { idCardUrl: downloadURL });

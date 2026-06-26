@@ -4,13 +4,14 @@ import { db, auth } from '@/src/lib/firebase';
 import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { TravelPackage, Booking, Passenger } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar } from 'lucide-react';
+import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar, FileText, Download } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { extractPassengerFromPassport } from '@/src/services/aiService';
 import { useToast } from '@/src/components/layout/ToastContext';
 import DynamicPassengerFields from '@/src/components/DynamicPassengerFields';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { jsPDF } from 'jspdf';
 
 export default function PackageDetails() {
   const toast = useToast();
@@ -19,9 +20,267 @@ export default function PackageDetails() {
   const [pkg, setPkg] = useState<TravelPackage | null>(null);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
+  const [createdBookingId, setCreatedBookingId] = useState<string>('');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [scanningIndex, setScanningIndex] = useState<number | null>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
+
+  const generatePDF = () => {
+    if (!pkg) return;
+    
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const primaryColor = [249, 115, 22]; // Orange-500 (#f97316)
+      const secondaryColor = [30, 41, 59]; // Slate-800 (#1e293b)
+      const grayColor = [100, 116, 139]; // Slate-500 (#64748b)
+      const lightGrayColor = [241, 245, 249]; // Slate-100 (#f1f5f9)
+      
+      const bookingId = createdBookingId || Math.random().toString(36).substr(2, 9).toUpperCase();
+      
+      // Page setup & borders
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      
+      // Accent top bar
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, pageWidth, 8, 'F');
+      
+      // Header: Logo / Company Name
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(26);
+      doc.text('AGILITY TRAVELS', 15, 25);
+      
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Premium Pilgrimage & Bespoke Corporate Tours', 15, 31);
+      
+      // Right header: Invoice details
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('BOOKING TICKET', pageWidth - 15, 23, { align: 'right' });
+      
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`Booking ID: #${bookingId}`, pageWidth - 15, 28, { align: 'right' });
+      doc.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth - 15, 33, { align: 'right' });
+      
+      // Horizontal Line
+      doc.setDrawColor(226, 232, 240); // border-slate-200
+      doc.setLineWidth(0.5);
+      doc.line(15, 38, pageWidth - 15, 38);
+      
+      // Spiritual blessing if Umrah/Haj
+      let yOffset = 46;
+      if (pkg.type === 'umrah' || pkg.type === 'haj') {
+        doc.setFillColor(250, 250, 249); // Warm stone
+        doc.setDrawColor(231, 229, 228);
+        doc.rect(15, yOffset, pageWidth - 30, 12, 'FD');
+        
+        doc.setFont('Helvetica', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor(120, 113, 108);
+        doc.text('"May Allah accept your intentions and make your journey full of blessings."', pageWidth / 2, yOffset + 7.5, { align: 'center' });
+        yOffset += 18;
+      }
+      
+      // Main columns
+      const leftColX = 15;
+      const rightColX = pageWidth / 2 + 5;
+      const colWidth = (pageWidth - 30 - 10) / 2;
+      
+      // Box 1: Booking Summary (Left)
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.rect(leftColX, yOffset, colWidth, 48, 'F');
+      
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text('PACKAGE INFORMATION', leftColX + 5, yOffset + 6);
+      
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setLineWidth(1);
+      doc.line(leftColX + 5, yOffset + 8, leftColX + 25, yOffset + 8);
+      
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.text('Selected Package:', leftColX + 5, yOffset + 15);
+      doc.setFont('Helvetica', 'bold');
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text(pkg.title, leftColX + 5, yOffset + 20);
+      
+      doc.setFont('Helvetica', 'normal');
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.text('Category Type:', leftColX + 5, yOffset + 27);
+      doc.setFont('Helvetica', 'bold');
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text(pkg.category.toUpperCase(), leftColX + 5, yOffset + 32);
+      
+      if (startDate && endDate) {
+        doc.setFont('Helvetica', 'normal');
+        doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+        doc.text('Travel Dates:', leftColX + 5, yOffset + 39);
+        doc.setFont('Helvetica', 'bold');
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.text(`${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`, leftColX + 5, yOffset + 44);
+      } else if (pkg.duration) {
+        doc.setFont('Helvetica', 'normal');
+        doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+        doc.text('Duration:', leftColX + 5, yOffset + 39);
+        doc.setFont('Helvetica', 'bold');
+        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+        doc.text(pkg.duration, leftColX + 5, yOffset + 44);
+      }
+      
+      // Box 2: Customer details (Right)
+      doc.setFillColor(248, 250, 252);
+      doc.rect(rightColX, yOffset, colWidth, 48, 'F');
+      
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text('CONTACT DETAILS', rightColX + 5, yOffset + 6);
+      
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setLineWidth(1);
+      doc.line(rightColX + 5, yOffset + 8, rightColX + 25, yOffset + 8);
+      
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.text('Contact Name:', rightColX + 5, yOffset + 15);
+      doc.setFont('Helvetica', 'bold');
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text(contactInfo.name || 'Valued Customer', rightColX + 5, yOffset + 20);
+      
+      doc.setFont('Helvetica', 'normal');
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.text('Email Address:', rightColX + 5, yOffset + 27);
+      doc.setFont('Helvetica', 'bold');
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text(contactInfo.email || 'N/A', rightColX + 5, yOffset + 32);
+      
+      doc.setFont('Helvetica', 'normal');
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.text('Phone Number:', rightColX + 5, yOffset + 39);
+      doc.setFont('Helvetica', 'bold');
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text(contactInfo.phone || 'N/A', rightColX + 5, yOffset + 44);
+      
+      yOffset += 56;
+      
+      // Payment block
+      doc.setFillColor(255, 247, 237); // Light orange bg
+      doc.setDrawColor(254, 215, 170); // border
+      doc.rect(15, yOffset, pageWidth - 30, 18, 'FD');
+      
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text('PAYMENT SUMMARY', 20, yOffset + 7);
+      
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`Method: ${paymentMethod === 'bank' ? 'Bank Transfer' : 'Credit/Debit Card'}`, 20, yOffset + 13);
+      
+      // Total amount
+      const totalAmt = pkg.price * passengers.length;
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text(`Total Price: ${totalAmt.toLocaleString()} PKR`, pageWidth - 20, yOffset + 11, { align: 'right' });
+      
+      yOffset += 26;
+      
+      // Passenger list header
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text('PASSENGER MANIFEST', 15, yOffset);
+      
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setLineWidth(1);
+      doc.line(15, yOffset + 2, 35, yOffset + 2);
+      
+      yOffset += 7;
+      
+      // Passenger Table Header
+      doc.setFillColor(241, 245, 249); // slate-100
+      doc.rect(15, yOffset, pageWidth - 30, 8, 'F');
+      
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(47, 55, 69);
+      doc.text('No.', 18, yOffset + 5.5);
+      doc.text('Full Name', 30, yOffset + 5.5);
+      doc.text('Passport Number', 90, yOffset + 5.5);
+      doc.text('Nationality', 135, yOffset + 5.5);
+      doc.text('Gender / Age', 170, yOffset + 5.5);
+      
+      yOffset += 8;
+      
+      // Passenger rows
+      passengers.forEach((passenger, index) => {
+        // Draw alternate rows
+        if (index % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(15, yOffset, pageWidth - 30, 8, 'F');
+        }
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+        doc.text(`${index + 1}`, 18, yOffset + 5.5);
+        doc.setFont('Helvetica', 'bold');
+        doc.text(passenger.name || 'N/A', 30, yOffset + 5.5);
+        doc.setFont('Helvetica', 'normal');
+        doc.text(passenger.passportNumber || 'N/A', 90, yOffset + 5.5);
+        doc.text(passenger.nationality || 'N/A', 135, yOffset + 5.5);
+        doc.text(`${passenger.gender || 'N/A'} / ${passenger.age || 'N/A'}`, 170, yOffset + 5.5);
+        
+        yOffset += 8;
+      });
+      
+      // Footer block
+      const footerY = pageHeight - 40;
+      doc.setDrawColor(241, 245, 249);
+      doc.setLineWidth(0.5);
+      doc.line(15, footerY, pageWidth - 15, footerY);
+      
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.text('IMPORTANT INSTRUCTIONS:', 15, footerY + 6);
+      
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.text('1. Please submit the proof of payment within 48 hours to confirm this booking reservation.', 15, footerY + 11);
+      doc.text('2. Ensure your passport is valid for at least 6 months from the date of travel.', 15, footerY + 15);
+      doc.text('3. Support and inquiries: support@agilitytravels.com | +92-300-1234567', 15, footerY + 19);
+      
+      // Branding bottom
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.text('Thank you for trusting Agility Travels.', pageWidth / 2, pageHeight - 10, { align: 'center' });
+      
+      doc.save(`AgilityTravels-BookingTicket-${bookingId}.pdf`);
+      toast.success("PDF Invoice downloaded successfully!");
+    } catch (err) {
+      console.error("PDF Generation error:", err);
+      toast.error("Failed to generate PDF. Please try again.");
+    }
+  };
   
   // Form State
   const [passengers, setPassengers] = useState<Passenger[]>([{ 
@@ -126,6 +385,44 @@ export default function PackageDetails() {
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1]); // Only data part
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const uploadFileToBackend = async (file: File): Promise<string> => {
+    const base64 = await fileToBase64(file);
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type,
+        base64,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server upload returned status ${response.status}`);
+    }
+
+    const json = await response.json();
+    if (!json.success || !json.url) {
+      throw new Error(json.error || "Failed to upload to server");
+    }
+
+    return json.url;
+  };
+
   const handleBookingSubmit = async () => {
     if (!auth.currentUser || !pkg) {
       toast.error("Please sign in to book a package");
@@ -136,10 +433,34 @@ export default function PackageDetails() {
     setBookingLoading(true);
     try {
       let driveFileIds: string[] = [];
+      let passportUrl = '';
+      let idCardUrl = '';
       const filesToUpload: File[] = [];
       if (passportFile) filesToUpload.push(passportFile);
       if (idCardFile) filesToUpload.push(idCardFile);
 
+      // 1. Upload to our Express server backend (Guaranteed & fast)
+      if (passportFile) {
+        setUploadProgress(10);
+        setUploadStatusText("Uploading Passport Copy to server...");
+        try {
+          passportUrl = await uploadFileToBackend(passportFile);
+        } catch (err) {
+          console.error("Failed to upload passport to server:", err);
+        }
+      }
+
+      if (idCardFile) {
+        setUploadProgress(40);
+        setUploadStatusText("Uploading ID Card Copy to server...");
+        try {
+          idCardUrl = await uploadFileToBackend(idCardFile);
+        } catch (err) {
+          console.error("Failed to upload ID card to server:", err);
+        }
+      }
+
+      // 2. Upload to Google Drive as additional backup if required
       if (filesToUpload.length > 0) {
         const { uploadBookingDocuments } = await import('@/src/services/googleDriveService');
         const catFolder = pkg.type === 'study-abroad' ? 'Study Abroad' : 
@@ -153,13 +474,13 @@ export default function PackageDetails() {
              contactInfo.name || passengers[0].name || auth.currentUser.displayName || 'Unknown Client',
              filesToUpload,
              (progress, statusText) => {
-               setUploadProgress(progress);
-               setUploadStatusText(statusText);
+               setUploadProgress(50 + Math.floor(progress / 2));
+               setUploadStatusText(`Google Drive Sync: ${statusText}`);
              }
            );
         } catch(e) {
            console.error("Failed to upload to Google Drive:", e);
-           // Allow booking to proceed without documents, user can try again later
+           // Allow booking to proceed without Google Drive, since we have backend upload!
         }
       }
 
@@ -179,12 +500,15 @@ export default function PackageDetails() {
         contactEmail: contactInfo.email,
         contactPhone: contactInfo.phone,
         contactAddress: contactInfo.address,
+        passportUrl: passportUrl || undefined,
+        idCardUrl: idCardUrl || undefined,
         notes: driveFileIds.length > 0 ? `Uploaded ${driveFileIds.length} document(s) to Google Drive.` : '',
         preferredStartDate: startDate ? startDate.toISOString().split('T')[0] : '',
         preferredEndDate: endDate ? endDate.toISOString().split('T')[0] : '',
       };
 
-      await addDoc(collection(db, 'bookings'), bookingData);
+      const docRef = await addDoc(collection(db, 'bookings'), bookingData);
+      setCreatedBookingId(docRef.id);
 
       // Trigger automated booking confirmation email
       try {
@@ -788,10 +1112,29 @@ export default function PackageDetails() {
                     <CheckCircle2 className="text-white w-10 h-10" />
                  </div>
                  <h2 className="text-3xl font-bold text-slate-900 mb-4">Booking Successfully Submitted!</h2>
+                  <p className="text-slate-600 mb-8 max-w-md mx-auto font-medium">
+                    Thank you for choosing Agility Travels. Your booking ID is <strong className="font-mono text-orange-600 font-bold bg-orange-100/50 px-2.5 py-1 rounded-md">#{createdBookingId || 'PENDING'}</strong>. One of our agents will contact you shortly on your provided number for payment verification.
+                  </p>
+
+                  <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm max-w-lg mx-auto mb-10 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="text-left">
+                      <h4 className="font-bold text-slate-900 text-sm">Download Confirmation Ticket</h4>
+                      <p className="text-xs text-slate-500 font-medium text-left">Get a printable PDF containing your booking manifest, pricing, and instructions.</p>
+                    </div>
+                    <button
+                      onClick={generatePDF}
+                      className="w-full md:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-orange-500/20 text-sm shrink-0 active:scale-95 cursor-pointer"
+                    >
+                      <Download size={16} />
+                      <span>Download PDF</span>
+                    </button>
+                  </div>
+                  {/*
                  <p className="text-slate-600 mb-10 max-w-md mx-auto">
                    Thank you for choosing Agility Travels. Your booking ID is <strong>#{Math.random().toString(36).substr(2, 9).toUpperCase()}</strong>. One of our agents will contact you shortly on your provided number for payment verification.
                  </p>
-                 <div className="flex flex-col sm:flex-row justify-center gap-4">
+                 */}
+                  <div className="flex flex-col sm:flex-row justify-center gap-4">
                     <Link to="/profile" className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all">
                       View My Bookings
                     </Link>

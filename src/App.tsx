@@ -9,6 +9,7 @@ import { ToastProvider } from '@/src/components/layout/ToastContext';
 import Navbar from '@/src/components/layout/Navbar';
 import Footer from '@/src/components/layout/Footer';
 import VisaConsultant from '@/src/components/VisaConsultant';
+import SupportChat from '@/src/components/SupportChat';
 import Home from '@/src/pages/Home';
 import Packages from '@/src/pages/Packages';
 import PackageDetails from '@/src/pages/PackageDetails';
@@ -106,6 +107,7 @@ export default function App() {
             <Footer />
           </div>
           <VisaConsultant />
+          <SupportChat />
         </div>
       </Router>
     </ToastProvider>

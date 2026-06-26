@@ -9,6 +9,7 @@ import { TravelPackage, HeroSlide } from '@/src/types';
 import { db } from '@/src/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/src/components/layout/ToastContext';
+import Testimonials from '@/src/components/Testimonials';
 
 const CATEGORIES = [
   { 
@@ -90,7 +91,7 @@ const HERO_SLIDES = [
     tagline: 'Sacred Pilgrimage & Devotion',
     title: 'Spiritual Journeys & Sacred Guides',
     description: 'Premium custom Umrah & Haj 2026/2027 packages. Tailored itineraries, luxury lodging located in the immediate courtyard of the Holy Harams, and expert religious guidance.',
-    image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=2070&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=75&w=1200&auto=format&fit=crop',
     actionText: 'Explore Sacred Packages',
     href: '/packages/umrah'
   },
@@ -98,7 +99,7 @@ const HERO_SLIDES = [
     tagline: 'Global Business Expansion',
     title: 'EXPO Sponsorship, Booths & Passes',
     description: 'Unlock premier business engagement. Book corporate exhibition booths, secure elite delegate passes, B2B matchmaking invitations, and get fast-track visa processing with all-inclusive flight tickets.',
-    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=75&w=1200&auto=format&fit=crop',
     actionText: 'Book EXPO Packages',
     href: '/packages/expo'
   },
@@ -106,7 +107,7 @@ const HERO_SLIDES = [
     tagline: 'World-Class European Education',
     title: 'Study Abroad: Finland & Estonia 2027',
     description: 'Admission assistance for prestigious Graduate & Masters programs for Summer, Winter, and Autumn 2027 intakes. Seamless university admission support, documentation profiling, and high-success study visa coaching.',
-    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=75&w=1200&auto=format&fit=crop',
     actionText: 'Explore Study Abroad',
     href: '/packages/study-abroad'
   }
@@ -603,7 +604,7 @@ export default function Home() {
               >
                 <div>
                   <div className="relative h-64 overflow-hidden">
-                    <img src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=800&auto=format&fit=crop'} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
+                    <img src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=800&auto=format&fit=crop'} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" loading="lazy" />
                     <div className="absolute top-4 left-4">
                       <span className="px-3 apy-1 bg-white/95 backdrop-blur-sm text-emerald-700 text-[10px] font-black rounded-full uppercase tracking-wider shadow-sm border border-emerald-500/10">
                         {pkg.category} Package
@@ -757,7 +758,7 @@ export default function Home() {
               >
                 <div className="space-y-5">
                   <div className="relative h-44 rounded-2xl overflow-hidden bg-slate-900 shadow-sm">
-                    <img src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop'} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
+                    <img src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop'} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" loading="lazy" />
                     <span className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white font-mono text-[9px] font-black uppercase rounded-md leading-none shadow-md">
                       {pkg.category.toUpperCase()}
                     </span>
@@ -929,7 +930,7 @@ export default function Home() {
                   className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-xl shadow-slate-100/50 group"
                 >
                   <div className="relative h-64 overflow-hidden">
-                     <img src={pkg.images[0]} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
+                     <img src={pkg.images[0]} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" loading="lazy" />
                      <div className="absolute top-4 left-4">
                        <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-slate-900 text-[10px] font-bold rounded-full uppercase tracking-wider">{pkg.category}</span>
                      </div>
@@ -1006,36 +1007,7 @@ export default function Home() {
       </section>
 
       {/* Reviews */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-             <span className="text-orange-500 font-bold text-sm uppercase tracking-widest">Testimonials</span>
-             <h2 className="text-4xl font-bold mt-2">What Our Clients <span className="text-slate-400 italic">Say</span></h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="p-10 border border-slate-100 rounded-[2.5rem] bg-slate-50 relative group hover:bg-slate-900 transition-all duration-500">
-                <div className="absolute top-8 right-8 text-orange-500 group-hover:text-orange-400">
-                  <Star fill="currentColor" size={20} />
-                </div>
-                <p className="text-slate-600 group-hover:text-slate-400 italic leading-relaxed mb-8">
-                  "Agility Travels made our Umrah trip incredibly smooth. From the visa process to the hotel locations, everything was perfectly managed. Highy recommended!"
-                </p>
-                <div className="flex items-center space-x-4">
-                   <div className="w-12 h-12 bg-slate-200 rounded-full overflow-hidden">
-                      <img src={`https://i.pravatar.cc/150?u=${i}`} alt={`Client Ahmad Raza avatar ${i}`} className="w-full h-full object-cover" />
-                   </div>
-                   <div>
-                      <h4 className="font-bold group-hover:text-white">Ahmad Raza</h4>
-                      <p className="text-xs text-slate-400">Umrah Package 2025</p>
-                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <Testimonials />
 
       {/* Newsletter */}
       <section className="py-24">

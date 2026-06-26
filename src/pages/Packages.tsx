@@ -391,6 +391,7 @@ export default function Packages() {
                       <div className="relative h-56 overflow-hidden">
                          <img 
                            src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa'} 
+                           alt={pkg.title}
                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                            referrerPolicy="no-referrer" 
                          />

@@ -282,7 +282,7 @@ export default function PackageDetails() {
                  key="step1"
                >
                  <div className="rounded-3xl overflow-hidden mb-8 h-[400px]">
-                    <img src={pkg.images[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa'} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src={pkg.images[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa'} alt={`${pkg.title || 'Package'} - Main view`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                  </div>
                  <div className="prose prose-slate max-w-none">
                     <h3 className="text-2xl font-bold mb-4">About this package</h3>

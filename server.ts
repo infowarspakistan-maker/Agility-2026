@@ -4,8 +4,32 @@ import path from "path";
 import { Resend } from 'resend';
 import dotenv from 'dotenv';
 import Stripe from 'stripe';
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
+import fs from "fs";
 
 dotenv.config();
+
+let dbInstance: any = null;
+function getFirestoreDb() {
+  if (!dbInstance) {
+    try {
+      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+      if (fs.existsSync(configPath)) {
+        const firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        const firebaseApp = initializeApp(firebaseConfig);
+        dbInstance = firebaseConfig.firestoreDatabaseId
+          ? getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId)
+          : getFirestore(firebaseApp);
+      } else {
+        console.warn("firebase-applet-config.json not found for backend.");
+      }
+    } catch (err) {
+      console.error("Failed to initialize Firebase in server:", err);
+    }
+  }
+  return dbInstance;
+}
 
 let resendClient: Resend | null = null;
 function getResend() {
@@ -167,6 +191,61 @@ async function startServer() {
       console.error("Failed to send booking confirmation email:", error);
       res.status(500).json({ error: "Failed to send booking confirmation email" });
     }
+  });
+
+  app.get("/sitemap.xml", async (req, res) => {
+    res.header("Content-Type", "application/xml");
+    
+    // Fallback static URL list in case Firebase connection fails
+    const staticUrls = [
+      "",
+      "/faq",
+      "/contact",
+      "/about",
+      "/login",
+      "/packages/umrah",
+      "/packages/haj",
+      "/packages/expo",
+      "/packages/adventure",
+      "/packages/all",
+    ];
+    
+    const domain = "https://agilitytravels.com";
+    
+    let dynamicUrls: string[] = [];
+    try {
+      const db = getFirestoreDb();
+      if (db) {
+        const querySnapshot = await getDocs(collection(db, "packages"));
+        querySnapshot.forEach((doc) => {
+          dynamicUrls.push(`/package/${doc.id}`);
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch packages for sitemap.xml:", err);
+    }
+    
+    const allUrls = [...staticUrls, ...dynamicUrls];
+    const sitemapContent = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${allUrls.map(urlPath => `  <url>
+    <loc>${domain}${urlPath}</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>${urlPath === "" ? "daily" : "weekly"}</changefreq>
+    <priority>${urlPath === "" ? "1.0" : urlPath.startsWith("/package/") ? "0.8" : "0.5"}</priority>
+  </url>`).join("\n")}
+</urlset>`;
+
+    res.send(sitemapContent);
+  });
+
+  app.get("/robots.txt", (req, res) => {
+    res.header("Content-Type", "text/plain");
+    res.send(`User-agent: *
+Allow: /
+
+Sitemap: https://agilitytravels.com/sitemap.xml
+`);
   });
 
   // Vite middleware for development

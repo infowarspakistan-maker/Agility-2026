@@ -431,7 +431,7 @@ export default function Home() {
                       >
                         <img 
                           src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa'} 
-                          alt="" 
+                          alt={pkg.title} 
                           className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
                           referrerPolicy="no-referrer"
                         />
@@ -603,7 +603,7 @@ export default function Home() {
               >
                 <div>
                   <div className="relative h-64 overflow-hidden">
-                    <img src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=800&auto=format&fit=crop'} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
+                    <img src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=800&auto=format&fit=crop'} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
                     <div className="absolute top-4 left-4">
                       <span className="px-3 apy-1 bg-white/95 backdrop-blur-sm text-emerald-700 text-[10px] font-black rounded-full uppercase tracking-wider shadow-sm border border-emerald-500/10">
                         {pkg.category} Package
@@ -757,7 +757,7 @@ export default function Home() {
               >
                 <div className="space-y-5">
                   <div className="relative h-44 rounded-2xl overflow-hidden bg-slate-900 shadow-sm">
-                    <img src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop'} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
+                    <img src={pkg.images?.[0] || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop'} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" />
                     <span className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white font-mono text-[9px] font-black uppercase rounded-md leading-none shadow-md">
                       {pkg.category.toUpperCase()}
                     </span>
@@ -929,7 +929,7 @@ export default function Home() {
                   className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-xl shadow-slate-100/50 group"
                 >
                   <div className="relative h-64 overflow-hidden">
-                     <img src={pkg.images[0]} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
+                     <img src={pkg.images[0]} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
                      <div className="absolute top-4 left-4">
                        <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-slate-900 text-[10px] font-bold rounded-full uppercase tracking-wider">{pkg.category}</span>
                      </div>
@@ -994,7 +994,7 @@ export default function Home() {
 
             <div className="relative">
               <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl h-[500px]">
-                <img src="https://images.unsplash.com/photo-1544027993-37dbfe43562a?auto=format&fit=crop&w=1200&q=80" className="w-full h-full object-cover" />
+                <img src="https://images.unsplash.com/photo-1544027993-37dbfe43562a?auto=format&fit=crop&w=1200&q=80" alt="Agility Travels - Trusted Travel Partner Group" className="w-full h-full object-cover" />
               </div>
               <div className="absolute -bottom-10 -right-10 bg-orange-500 w-64 p-8 rounded-3xl shadow-2xl z-20">
                 <p className="text-4xl font-bold text-white mb-2">10k+</p>
@@ -1024,7 +1024,7 @@ export default function Home() {
                 </p>
                 <div className="flex items-center space-x-4">
                    <div className="w-12 h-12 bg-slate-200 rounded-full overflow-hidden">
-                      <img src={`https://i.pravatar.cc/150?u=${i}`} className="w-full h-full object-cover" />
+                      <img src={`https://i.pravatar.cc/150?u=${i}`} alt={`Client Ahmad Raza avatar ${i}`} className="w-full h-full object-cover" />
                    </div>
                    <div>
                       <h4 className="font-bold group-hover:text-white">Ahmad Raza</h4>

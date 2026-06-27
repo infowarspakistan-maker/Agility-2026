@@ -9,7 +9,7 @@ export interface TravelPackage {
   currency: string;
   category: string;
   duration: string;
-  itinerary: string[];
+  itinerary: string | string[];
   itineraryDetails?: { title: string; description: string }[];
   additionalInfo?: { title: string; description: string }[];
   images: string[];

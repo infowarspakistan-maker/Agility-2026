@@ -13,7 +13,7 @@ import {
   Activity, Cpu, Zap, Radio, Sparkles
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { cn, formatCurrency } from '@/src/lib/utils';
+import { cn, formatCurrency, ensureItineraryArray } from '@/src/lib/utils';
 import { seedDatabase } from '@/src/services/api';
 import { generateItinerary, generateExecutiveInsights } from '@/src/services/aiService';
 import Markdown from 'react-markdown';
@@ -2964,16 +2964,43 @@ export default function Admin() {
                        <div className="space-y-2">
                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                              <Layers size={12} className="mr-2" />
-                             Itinerary / Features (One per line)
+                             <span className="flex justify-between items-center w-full">
+                                <span>{currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? 'AI-Generated Markdown Itinerary' : 'Itinerary / Features (One per line)'}</span>
+                                {currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (confirm("Are you sure you want to convert this Markdown itinerary into a line-by-line list?")) {
+                                        setCurrentPackage({ ...currentPackage, itinerary: ensureItineraryArray(currentPackage.itinerary) });
+                                      }
+                                    }}
+                                    className="text-[9px] font-black text-orange-600 hover:underline uppercase tracking-wider ml-2 shadow-none border-0 bg-transparent py-0 px-0 cursor-pointer"
+                                  >
+                                    Convert to Line List
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (confirm("Convert this bulleted list into a single editable Markdown string?")) {
+                                        setCurrentPackage({ ...currentPackage, itinerary: ensureItineraryArray(currentPackage.itinerary).join('\n') });
+                                      }
+                                    }}
+                                    className="text-[9px] font-black text-sky-600 hover:underline uppercase tracking-wider ml-2 shadow-none border-0 bg-transparent py-0 px-0 cursor-pointer"
+                                  >
+                                    Convert to Raw Text
+                                  </button>
+                                )}
+                              </span>
                           </label>
                           <textarea 
-                            rows={3}
-                            className="w-full bg-slate-50 border border-slate-100 rounded-[1rem] px-5 py-4 text-sm font-medium outline-none focus:border-orange-500 transition-all resize-none leading-relaxed"
+                            rows={currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? 10 : 3}
+                            className={`w-full bg-slate-50 border border-slate-100 rounded-[1rem] px-5 py-4 text-sm font-medium outline-none focus:border-orange-500 transition-all resize-none leading-relaxed ${currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? 'font-mono text-xs' : ''}`}
                             placeholder="Day 1: Arrival...&#10;Day 2: City Tour..."
-                            value={currentPackage.itinerary?.join('\n') || ''}
+                            value={currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? currentPackage.itinerary : ensureItineraryArray(currentPackage.itinerary).join('\n')}
                             onChange={(e) => setCurrentPackage({ 
                               ...currentPackage, 
-                              itinerary: e.target.value.split('\n').filter(line => line.trim() !== '')
+                              itinerary: currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? e.target.value : e.target.value.split('\n').filter(line => line.trim() !== '')
                             })}
                           />
                        </div>

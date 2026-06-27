@@ -96,6 +96,24 @@ async function startServer() {
     }
   });
 
+  // Robust Gemini content generation helper with self-healing fallback model
+  async function generateContentWithFallback(params: any): Promise<any> {
+    const primaryModel = params.model || "gemini-3.5-flash";
+    const fallbackModel = "gemini-flash-latest";
+    try {
+      return await ai.models.generateContent(params);
+    } catch (err: any) {
+      console.warn(`Primary model ${primaryModel} failed. Retrying with fallback ${fallbackModel}. Error:`, err);
+      try {
+        const fallbackParams = { ...params, model: fallbackModel };
+        return await ai.models.generateContent(fallbackParams);
+      } catch (fallbackErr: any) {
+        console.error(`Fallback model ${fallbackModel} also failed:`, fallbackErr);
+        throw err; // throw original error if fallback also fails
+      }
+    }
+  }
+
   // AI Chat Endpoint
   app.post("/api/ai/chat", async (req, res) => {
     const { message, history = [], packagesContext = "" } = req.body;
@@ -103,22 +121,32 @@ async function startServer() {
       return res.status(400).json({ error: "Message is required" });
     }
 
-    try {
-      const chat = ai.chats.create({
-        model: "gemini-3.5-flash",
-        history: history,
-        config: {
-          systemInstruction: `You are the 'Agility AI Assistant' for Agility Travels. You specialize in Umrah, Study Abroad, and Expo packages available on our webapp. Be professional, direct, and helpful. 
+    const systemInstruction = `You are the 'Agility AI Assistant' for Agility Travels. You specialize in Umrah, Study Abroad, and Expo packages available on our webapp. Be professional, direct, and helpful. 
           
 IMPORTANT: Only provide information about the packages available on the webapp. If the user asks about a package, use the following context to recommend the right package and provide a link to it. If the context does not contain relevant packages, politely inform the user that we do not have such packages currently but they can contact our support team.
 
 AVAILABLE PACKAGES:
-${packagesContext}`
-        }
-      });
+${packagesContext}`;
 
-      const response = await chat.sendMessage({ message: message });
-      res.json({ success: true, text: response.text });
+    try {
+      try {
+        const chat = ai.chats.create({
+          model: "gemini-3.5-flash",
+          history: history,
+          config: { systemInstruction }
+        });
+        const response = await chat.sendMessage({ message: message });
+        res.json({ success: true, text: response.text });
+      } catch (err: any) {
+        console.warn("Primary chat model failed. Retrying with fallback...", err);
+        const chatFallback = ai.chats.create({
+          model: "gemini-flash-latest",
+          history: history,
+          config: { systemInstruction }
+        });
+        const response = await chatFallback.sendMessage({ message: message });
+        res.json({ success: true, text: response.text });
+      }
     } catch (err: any) {
       console.error("Backend AI Chat Error:", err);
       res.status(500).json({ error: err.message || "Failed to generate AI response" });
@@ -133,7 +161,7 @@ ${packagesContext}`
     }
 
     try {
-      const response = await ai.models.generateContent({
+      const response = await generateContentWithFallback({
         model: "gemini-3.5-flash",
         contents: [
           {
@@ -198,7 +226,7 @@ ${packagesContext}`
     }
 
     try {
-      const response = await ai.models.generateContent({
+      const response = await generateContentWithFallback({
         model: "gemini-3.5-flash",
         contents: [
           {
@@ -229,7 +257,7 @@ ${packagesContext}`
     const { bookingsCount, totalRev, packagesCount, visasCount, categoriesBreakdown } = req.body;
 
     try {
-      const response = await ai.models.generateContent({
+      const response = await generateContentWithFallback({
         model: "gemini-3.5-flash",
         contents: [
           {

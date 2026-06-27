@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, MapPin, Calendar, Users, ArrowRight, Shield, Star, CheckCircle2, Plane, Landmark, Compass, ShieldCheck, Map, Briefcase, GraduationCap, ChevronLeft, ChevronRight, HelpCircle, FileText, Play, Pause } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { cn, optimizeImageUrl } from '@/src/lib/utils';
+import { cn, optimizeImageUrl, ensureItineraryArray } from '@/src/lib/utils';
 import { useState, useEffect } from 'react';
 import { packageService } from '@/src/services/api';
 import { TravelPackage, HeroSlide } from '@/src/types';
@@ -812,7 +812,7 @@ export default function Home() {
                     <p className="text-xs text-slate-400 leading-relaxed font-semibold line-clamp-2 mb-6">{pkg.description}</p>
                     
                     <div className="space-y-2 bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100/50">
-                      {pkg.itinerary?.slice(0, 2).map((item, i) => (
+                      {ensureItineraryArray(pkg.itinerary).slice(0, 2).map((item, i) => (
                         <div key={i} className="flex items-start text-[11px] text-emerald-800 font-bold leading-none gap-2">
                           <CheckCircle2 size={12} className="shrink-0 mt-0.5 text-emerald-500" />
                           <span>{item}</span>

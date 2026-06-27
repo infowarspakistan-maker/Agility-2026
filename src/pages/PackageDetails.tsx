@@ -5,13 +5,14 @@ import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { TravelPackage, Booking, Passenger } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar, FileText, Download } from 'lucide-react';
-import { cn, formatCurrency, optimizeImageUrl, compressImage } from '@/src/lib/utils';
+import { cn, formatCurrency, optimizeImageUrl, compressImage, ensureItineraryArray } from '@/src/lib/utils';
 import { extractPassengerFromPassport } from '@/src/services/aiService';
 import { useToast } from '@/src/components/layout/ToastContext';
 import DynamicPassengerFields from '@/src/components/DynamicPassengerFields';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { jsPDF } from 'jspdf';
+import Markdown from 'react-markdown';
 
 export default function PackageDetails() {
   const toast = useToast();
@@ -625,16 +626,22 @@ export default function PackageDetails() {
                     ) : (
                       <>
                         <h3 className="text-2xl font-bold mb-4">Itinerary</h3>
-                        <ul className="space-y-4 mb-8">
-                           {pkg.itinerary.map((item, idx) => (
-                             <li key={idx} className="flex items-start">
-                                <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold mr-3 shrink-0 mt-1">
-                                   {idx + 1}
-                                </div>
-                                <span className="text-slate-700">{item}</span>
-                             </li>
-                           ))}
-                        </ul>
+                        {pkg.itinerary && typeof pkg.itinerary === 'string' ? (
+                          <div className="prose prose-slate max-w-none bg-slate-50 p-8 rounded-[2rem] border border-slate-100 mb-8 leading-relaxed text-slate-700 whitespace-pre-line">
+                            <Markdown>{pkg.itinerary}</Markdown>
+                          </div>
+                        ) : (
+                          <ul className="space-y-4 mb-8">
+                             {ensureItineraryArray(pkg.itinerary).map((item, idx) => (
+                               <li key={idx} className="flex items-start">
+                                  <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold mr-3 shrink-0 mt-1">
+                                     {idx + 1}
+                                  </div>
+                                  <span className="text-slate-700">{item}</span>
+                               </li>
+                             ))}
+                          </ul>
+                        )}
                       </>
                     )}
 

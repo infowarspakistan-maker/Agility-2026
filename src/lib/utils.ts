@@ -88,4 +88,16 @@ export function compressImage(file: File, maxDimension: number = 1200, quality: 
   });
 }
 
+export function ensureItineraryArray(itinerary: any): string[] {
+  if (!itinerary) return [];
+  if (Array.isArray(itinerary)) return itinerary;
+  if (typeof itinerary === 'string') {
+    return itinerary
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+  }
+  return [];
+}
+
 

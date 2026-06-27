@@ -1,5 +1,6 @@
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '@/src/lib/firebase';
+import { ensureItineraryArray } from '@/src/lib/utils';
 
 let cachedAccessToken: string | null = null;
 
@@ -176,7 +177,7 @@ export const syncPackagesSummary = async (
       pkg.price || 0,
       pkg.inventoryCount || 0,
       pkg.locations || '',
-      pkg.itinerary ? pkg.itinerary.join(' ➔ ') : '',
+      pkg.itinerary ? ensureItineraryArray(pkg.itinerary).join(' ➔ ') : '',
     ]),
   ];
 
@@ -286,7 +287,7 @@ export const exportPersonalItinerarySheet = async (
     ['ITINERARY SCHEDULE & MILESTONES'],
     ['Sequence / Day', 'Activity Detail', 'Inclusions / Meals'],
     ...(pkg?.itinerary
-      ? pkg.itinerary.map((it: string, i: number) => [`Day ${i + 1}`, it, 'Provided as Scheduled'])
+      ? ensureItineraryArray(pkg.itinerary).map((it: string, i: number) => [`Day ${i + 1}`, it, 'Provided as Scheduled'])
       : [['Day 1', 'Welcome airport pickup, meet and greet, transfer to hotel.', 'Welcome Dinner']])
   ];
 

@@ -3,19 +3,35 @@ import { db } from '@/src/lib/firebase';
 import { TravelPackage, Booking, UserProfile, VisaRequest } from '@/src/types';
 
 export const packageService = {
+  async ensureSeeded() {
+    try {
+      const q = query(collection(db, 'packages'));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) {
+        console.log('No packages found in Firestore. Seeding default packages...');
+        await seedDatabase();
+      }
+    } catch (e) {
+      console.error('Error ensuring packages are seeded:', e);
+    }
+  },
+
   async getAll() {
+    await this.ensureSeeded();
     const q = query(collection(db, 'packages'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TravelPackage[];
   },
   
   async getByType(type: string) {
+    await this.ensureSeeded();
     const q = query(collection(db, 'packages'), where('type', '==', type));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TravelPackage[];
   },
 
   async getFeatured() {
+    await this.ensureSeeded();
     const q = query(collection(db, 'packages'), where('featured', '==', true));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TravelPackage[];

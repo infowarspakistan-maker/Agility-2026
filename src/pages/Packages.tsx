@@ -379,61 +379,153 @@ export default function Packages() {
             </div>
           ) : filteredPackages.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredPackages.map((pkg, idx) => (
-                 <motion.div
-                   key={pkg.id}
-                   initial={{ opacity: 0, y: 20 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   transition={{ delay: idx * 0.05 }}
-                   className="group bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
-                 >
+              {filteredPackages.map((pkg, idx) => {
+                // Determine gorgeous dynamic styles based on package type
+                let badgeColor = "bg-orange-50 text-orange-700 border-orange-100/60";
+                let badgeIcon = <Tag size={11} className="text-orange-500" />;
+                let badgeText = pkg.category || "Standard";
+                let features: string[] = [];
+
+                switch (pkg.type) {
+                  case 'umrah':
+                  case 'haj':
+                    badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-100/80";
+                    badgeIcon = <Landmark size={11} className="text-emerald-600" />;
+                    badgeText = pkg.type === 'umrah' ? "Sacred Umrah" : "Sacred Haj";
+                    features = ["5★ Luxury Lodging", "Ziyarat Guides", "Visa Support"];
+                    break;
+                  case 'study-abroad':
+                    badgeColor = "bg-sky-50 text-sky-700 border-sky-100/80";
+                    badgeIcon = <GraduationCap size={11} className="text-sky-600" />;
+                    badgeText = "Study Abroad";
+                    features = ["Admission Assist", "Visa Consultation", "Documents Profiling"];
+                    break;
+                  case 'expo':
+                  case 'corporate':
+                    badgeColor = "bg-indigo-50 text-indigo-700 border-indigo-100/80";
+                    badgeIcon = <Briefcase size={11} className="text-indigo-600" />;
+                    badgeText = pkg.type === 'expo' ? "Business EXPO" : "Corporate Stay";
+                    features = ["Passes & Booths", "B2B Matching", "Flight Bookings"];
+                    break;
+                  case 'visa':
+                    badgeColor = "bg-purple-50 text-purple-700 border-purple-100/80";
+                    badgeIcon = <Shield size={11} className="text-purple-600" />;
+                    badgeText = "Fast-track Visa";
+                    features = ["High Success rate", "Document Setup", "Expert Filing"];
+                    break;
+                  default:
+                    badgeColor = "bg-amber-50 text-amber-700 border-amber-100/80";
+                    badgeIcon = <Map size={11} className="text-amber-600" />;
+                    badgeText = "Domestic Stay";
+                    features = ["Transport In", "Guided Sightseeing", "Meals Included"];
+                }
+
+                const locationList = pkg.locations ? pkg.locations.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+                return (
+                  <motion.div
+                    key={pkg.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="group bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(249,115,22,0.06)] hover:border-orange-200/50 transition-all duration-300 flex flex-col justify-between"
+                  >
                     <div>
-                      <div className="relative h-56 overflow-hidden">
-                         <img 
-                           src={optimizeImageUrl(pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 600, 75)} 
-                           alt={pkg.title}
-                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                           referrerPolicy="no-referrer" 
-                           loading="lazy"
-                         />
-                         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-slate-900">
-                           {pkg.category}
-                         </div>
+                      {/* Image Frame with Floating Badges */}
+                      <div className="relative h-60 overflow-hidden">
+                        <Link to={`/package/${pkg.id}`} className="block w-full h-full">
+                          <img 
+                            src={optimizeImageUrl(pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 600, 75)} 
+                            alt={pkg.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                            referrerPolicy="no-referrer" 
+                            loading="lazy"
+                          />
+                        </Link>
+                        
+                        {/* Floating badging line */}
+                        <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none">
+                          <div className={cn("flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border backdrop-blur-md shadow-sm", badgeColor)}>
+                            {badgeIcon}
+                            <span>{badgeText}</span>
+                          </div>
+                          {pkg.category && pkg.category !== "Standard" && (
+                            <div className="bg-slate-900/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm">
+                              {pkg.category}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Stay/Duration Badge Card */}
+                        <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm px-3.5 py-1.5 rounded-2xl flex items-center gap-1.5 shadow-sm text-slate-800 border border-slate-100/50">
+                          <Clock size={12} className="text-orange-500" />
+                          <span className="text-[10px] font-black uppercase tracking-wider">{pkg.duration}</span>
+                        </div>
                       </div>
-                      <div className="p-6">
-                         <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-orange-500 mb-2">
-                           <div className="flex items-center">
-                             <Clock size={12} className="mr-1" />
-                             {pkg.duration}
-                           </div>
-                           {pkg.locations && (
-                             <div className="flex items-center text-slate-400">
-                               <MapPin size={10} className="mr-0.5" />
-                               {pkg.locations}
-                             </div>
-                           )}
-                         </div>
-                         <h3 className="text-xl font-bold mb-3 line-clamp-1 text-slate-900">{pkg.title}</h3>
-                         <p className="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">
-                           {pkg.description || 'All-inclusive premium tailored package with pristine accommodations.'}
-                         </p>
+
+                      {/* Content Section */}
+                      <div className="p-8 pb-4">
+                        {/* Location List Badges */}
+                        {locationList.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-3.5">
+                            {locationList.slice(0, 3).map((loc, lIdx) => (
+                              <span key={lIdx} className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
+                                <MapPin size={10} className="text-orange-400" />
+                                <span>{loc}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Title block with hover color transition */}
+                        <Link to={`/package/${pkg.id}`} className="block group-hover:text-orange-500 transition-colors">
+                          <h3 className="text-xl font-extrabold mb-3 leading-snug tracking-tight text-slate-950 line-clamp-1">
+                            {pkg.title}
+                          </h3>
+                        </Link>
+
+                        {/* Description Paragraph */}
+                        <p className="text-xs text-slate-500 line-clamp-2 mb-6 leading-relaxed">
+                          {pkg.description || 'All-inclusive premium tailored package with pristine accommodations.'}
+                        </p>
+
+                        {/* Structured Feature Chips Grid */}
+                        <div className="grid grid-cols-1 gap-2 pt-4 border-t border-slate-100">
+                          <div className="text-[9px] font-black tracking-widest text-slate-400 uppercase mb-1">
+                            Core Inclusions
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {features.map((feat, fIdx) => (
+                              <span key={fIdx} className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-50/40 border border-orange-100/20 text-orange-800 text-[10px] font-extrabold rounded-lg capitalize">
+                                <Check size={10} className="text-orange-500 shrink-0" />
+                                <span>{feat}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="px-6 pb-6 pt-4 border-t border-slate-50 flex justify-between items-center bg-slate-50/50">
-                       <div>
-                         <p className="text-[10px] text-slate-400 font-bold uppercase">Price per person</p>
-                         <p className="text-xl font-bold text-slate-950 leading-none mt-1">Rs. {pkg.price.toLocaleString()}</p>
-                       </div>
-                       <Link 
-                         to={`/package/${pkg.id}`} 
-                         className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-orange-500 transition-all shadow-lg shadow-slate-900/10 flex items-center gap-1 group/btn"
-                       >
-                         <span>Book Now</span>
-                         <ArrowRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform" />
-                       </Link>
+
+                    {/* Footer price / purchase block */}
+                    <div className="px-8 pb-8 pt-5 border-t border-slate-50 flex justify-between items-center bg-slate-50/20">
+                      <div>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Price / Person</p>
+                        <p className="text-2xl font-black text-slate-950 mt-1 flex items-baseline">
+                          <span className="text-xs font-bold text-slate-400 mr-1">{pkg.currency || 'Rs.'}</span>
+                          <span>{pkg.price.toLocaleString()}</span>
+                        </p>
+                      </div>
+                      <Link 
+                        to={`/package/${pkg.id}`} 
+                        className="bg-slate-950 hover:bg-orange-500 text-white hover:text-white px-6 py-3.5 rounded-2xl font-bold text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-md hover:shadow-orange-500/20 flex items-center gap-1.5 group/btn border border-transparent"
+                      >
+                        <span>Book Details</span>
+                        <ArrowRight size={14} className="group-hover/btn:translate-x-0.5 transition-transform text-white/80" />
+                      </Link>
                     </div>
-                 </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">

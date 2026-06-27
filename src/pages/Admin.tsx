@@ -127,6 +127,7 @@ export default function Admin() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [editorTab, setEditorTab] = useState<'essential' | 'narrative' | 'media' | 'itinerary' | 'infocards'>('essential');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Hero Slide Management State
@@ -1643,6 +1644,7 @@ export default function Admin() {
                           featured: false,
                           isTrending: false
                         });
+                        setEditorTab('essential');
                         setIsEditing(true);
                       }}
                       className="flex items-center space-x-2 bg-orange-500 text-white px-6 py-4 rounded-2xl font-bold text-sm hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 whitespace-nowrap"
@@ -1670,6 +1672,7 @@ export default function Admin() {
                              <button 
                                onClick={() => {
                                  setCurrentPackage(pkg);
+                                 setEditorTab('essential');
                                  setIsEditing(true);
                                }}
                                className="p-2 bg-white rounded-lg text-slate-400 hover:text-sky-500 transition-colors shadow-sm"
@@ -2627,399 +2630,518 @@ export default function Admin() {
                  >
                    <XCircle size={24} />
                  </button>
-              </div>
+                           {/* Modular Premium Tab Bar */}
+               <div className="px-10 py-4 bg-slate-50 border-b border-slate-100 flex gap-2 overflow-x-auto scrollbar-none">
+                 {[
+                   { id: 'essential', label: 'Core Specs', icon: <Tag size={14} /> },
+                   { id: 'narrative', label: 'Narrative', icon: <FileText size={14} /> },
+                   { id: 'media', label: 'Media Gallery', icon: <ImageIcon size={14} /> },
+                   { id: 'itinerary', label: 'Itinerary List', icon: <MapPin size={14} /> },
+                   { id: 'infocards', label: 'Terms & Rules', icon: <Layers size={14} /> },
+                 ].map((tab) => (
+                   <button
+                     key={tab.id}
+                     onClick={() => setEditorTab(tab.id as any)}
+                     className={cn(
+                       "px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-2 transition-all shrink-0",
+                       editorTab === tab.id 
+                         ? "bg-slate-900 text-white shadow-md shadow-slate-900/15" 
+                         : "bg-white text-slate-500 border border-slate-200/60 hover:bg-slate-100"
+                     )}
+                   >
+                     {tab.icon}
+                     <span>{tab.label}</span>
+                   </button>
+                 ))}
+               </div>
 
-              <div className="p-10 overflow-y-auto space-y-10">
-                 {/* Form Grid */}
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                       <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                             <Tag size={12} className="mr-2" />
-                             Package Title
-                          </label>
-                          <input 
-                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all"
-                            value={currentPackage.title}
-                            onChange={(e) => setCurrentPackage({ ...currentPackage, title: e.target.value })}
-                          />
-                       </div>
-                       
-                       <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                             <Layers size={12} className="mr-2" />
-                             Classification
-                          </label>
-                          <select 
-                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all appearance-none"
-                            value={currentPackage.type}
-                            onChange={(e) => setCurrentPackage({ ...currentPackage, type: e.target.value as PackageType })}
-                          >
-                             <option value="umrah">Umrah</option>
-                             <option value="haj">Haj</option>
-                             <option value="visa">Visa</option>
-                             <option value="domestic-group">Domestic Group</option>
-                             <option value="domestic-private">Domestic Private</option>
-                             <option value="expo">Expo</option>
-                             <option value="study-abroad">Study Abroad</option>
-                          </select>
-                       </div>
+               <div className="p-10 overflow-y-auto flex-grow">
+                 <AnimatePresence mode="wait">
+                   {editorTab === 'essential' && (
+                     <motion.div
+                       key="essential"
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -10 }}
+                       className="space-y-6"
+                     >
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          {/* Col 1 */}
+                          <div className="space-y-6">
+                            <div className="space-y-2">
+                               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                                  <Tag size={12} className="mr-2 text-orange-500" />
+                                  Package Title
+                               </label>
+                               <input 
+                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-sm"
+                                 value={currentPackage.title}
+                                 placeholder="e.g. Executive Umrah Plus Package"
+                                 onChange={(e) => setCurrentPackage({ ...currentPackage, title: e.target.value })}
+                               />
+                            </div>
+                            
+                            <div className="space-y-2">
+                               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                                  <Layers size={12} className="mr-2 text-orange-500" />
+                                  Package Classification
+                               </label>
+                               <div className="relative">
+                                 <select 
+                                   className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 focus:bg-white transition-all appearance-none"
+                                   value={currentPackage.type}
+                                   onChange={(e) => setCurrentPackage({ ...currentPackage, type: e.target.value as PackageType })}
+                                 >
+                                    <option value="umrah">Umrah Package</option>
+                                    <option value="haj">Haj Package</option>
+                                    <option value="visa">Visa Services</option>
+                                    <option value="domestic-group">Domestic Group Tour</option>
+                                    <option value="domestic-private">Domestic Private Tour</option>
+                                    <option value="expo">Business Expo</option>
+                                    <option value="study-abroad">Study Abroad Program</option>
+                                 </select>
+                                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                                   <ChevronRight size={16} className="rotate-90" />
+                                 </div>
+                               </div>
+                            </div>
 
-                       <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                               <TrendingUp size={12} className="mr-2" />
-                               Price
-                            </label>
-                            <div className="flex space-x-2">
-                              <select 
-                                className="w-24 bg-slate-50 border border-slate-100 rounded-2xl px-3 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all appearance-none"
-                                value={currentPackage.currency || 'PKR'}
-                                onChange={(e) => setCurrentPackage({ ...currentPackage, currency: e.target.value })}
-                              >
-                                <option value="PKR">PKR</option>
-                                <option value="USD">USD</option>
-                                <option value="EUR">EUR</option>
-                                <option value="GBP">GBP</option>
-                              </select>
-                              <input 
-                                type="number"
-                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all"
-                                value={currentPackage.price}
-                                onChange={(e) => setCurrentPackage({ ...currentPackage, price: Number(e.target.value) })}
-                              />
+                            <div className="grid grid-cols-2 gap-4">
+                               <div className="space-y-2">
+                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                                    <TrendingUp size={12} className="mr-2 text-orange-500" />
+                                    Pricing Block
+                                 </label>
+                                 <div className="flex space-x-2">
+                                   <select 
+                                     className="w-24 bg-slate-50 border border-slate-100 rounded-2xl px-3 py-4 text-xs font-black outline-none focus:border-orange-500 transition-all appearance-none text-center"
+                                     value={currentPackage.currency || 'PKR'}
+                                     onChange={(e) => setCurrentPackage({ ...currentPackage, currency: e.target.value })}
+                                   >
+                                     <option value="PKR">PKR</option>
+                                     <option value="USD">USD</option>
+                                     <option value="EUR">EUR</option>
+                                     <option value="GBP">GBP</option>
+                                   </select>
+                                   <input 
+                                     type="number"
+                                     placeholder="0"
+                                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-sm"
+                                     value={currentPackage.price}
+                                     onChange={(e) => setCurrentPackage({ ...currentPackage, price: Number(e.target.value) })}
+                                   />
+                                 </div>
+                               </div>
+                               <div className="space-y-2">
+                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                                    <Clock size={12} className="mr-2 text-orange-500" />
+                                    Trip Duration
+                                 </label>
+                                 <input 
+                                   className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-sm"
+                                   placeholder="e.g. 14 Days"
+                                   value={currentPackage.duration}
+                                   onChange={(e) => setCurrentPackage({ ...currentPackage, duration: e.target.value })}
+                                 />
+                               </div>
                             </div>
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                               <Clock size={12} className="mr-2" />
-                               Duration
-                            </label>
-                            <input 
-                              className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all"
-                              placeholder="e.g. 14 Days"
-                              value={currentPackage.duration}
-                              onChange={(e) => setCurrentPackage({ ...currentPackage, duration: e.target.value })}
-                            />
+
+                          {/* Col 2 */}
+                          <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                               <div className="space-y-2">
+                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                                    <Tag size={12} className="mr-2 text-orange-500" />
+                                    Standard Tier
+                                 </label>
+                                 <input 
+                                   className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-sm"
+                                   placeholder="e.g. Premium, Economy"
+                                   value={currentPackage.category || ''}
+                                   onChange={(e) => setCurrentPackage({ ...currentPackage, category: e.target.value })}
+                                 />
+                               </div>
+                               <div className="space-y-2">
+                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                                    <Layers size={12} className="mr-2 text-orange-500" />
+                                    Global Inventory
+                                 </label>
+                                 <input 
+                                   type="number"
+                                   className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-sm"
+                                   value={currentPackage.inventoryCount || 0}
+                                   onChange={(e) => setCurrentPackage({ ...currentPackage, inventoryCount: Number(e.target.value) })}
+                                 />
+                               </div>
+                            </div>
+
+                            <div className="space-y-4 bg-slate-50 p-6 rounded-3xl border border-slate-100/50">
+                               <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-900 mb-2">Visibility Settings</h4>
+                               <div className="space-y-4">
+                                 <div className="flex items-center justify-between">
+                                   <div className="flex flex-col">
+                                     <span className="text-xs font-black text-slate-800">Featured Placement</span>
+                                     <span className="text-[10px] text-slate-400">Promote package on homepage hero section.</span>
+                                   </div>
+                                   <button
+                                     type="button"
+                                     onClick={() => setCurrentPackage({ ...currentPackage, featured: !currentPackage.featured })}
+                                     className={cn(
+                                       "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                                       currentPackage.featured ? 'bg-orange-500' : 'bg-slate-300'
+                                     )}
+                                   >
+                                     <span className={cn(
+                                       "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                       currentPackage.featured ? 'translate-x-6' : 'translate-x-1'
+                                     )} />
+                                   </button>
+                                 </div>
+                                 <div className="flex items-center justify-between border-t border-slate-200/50 pt-4">
+                                   <div className="flex flex-col">
+                                     <span className="text-xs font-black text-slate-800">Trending Slider Placement</span>
+                                     <span className="text-[10px] text-slate-400">Include in trending catalog carousel.</span>
+                                   </div>
+                                   <button
+                                     type="button"
+                                     onClick={() => setCurrentPackage({ ...currentPackage, isTrending: !currentPackage.isTrending })}
+                                     className={cn(
+                                       "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                                       currentPackage.isTrending ? 'bg-orange-500' : 'bg-slate-300'
+                                     )}
+                                   >
+                                     <span className={cn(
+                                       "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                       currentPackage.isTrending ? 'translate-x-6' : 'translate-x-1'
+                                     )} />
+                                   </button>
+                                 </div>
+                               </div>
+                            </div>
                           </div>
                        </div>
+                     </motion.div>
+                   )}
 
-                       <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                               <Tag size={12} className="mr-2" />
-                               Category
-                            </label>
-                            <input 
-                              className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all"
-                              placeholder="e.g. Premium, Economy"
-                              value={currentPackage.category || ''}
-                              onChange={(e) => setCurrentPackage({ ...currentPackage, category: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                               <Layers size={12} className="mr-2" />
-                               Inventory Count
-                            </label>
-                            <input 
-                              type="number"
-                              className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 transition-all"
-                              value={currentPackage.inventoryCount || 0}
-                              onChange={(e) => setCurrentPackage({ ...currentPackage, inventoryCount: Number(e.target.value) })}
-                            />
-                          </div>
-                       </div>
-
-                       <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-slate-700">Featured Package</label>
-                            <button
-                              type="button"
-                              onClick={() => setCurrentPackage({ ...currentPackage, featured: !currentPackage.featured })}
-                              className={cn(
-                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                                currentPackage.featured ? 'bg-orange-500' : 'bg-slate-300'
-                              )}
-                            >
-                              <span className={cn(
-                                "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                                currentPackage.featured ? 'translate-x-6' : 'translate-x-1'
-                              )} />
-                            </button>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold text-slate-700">Trending Slider</label>
-                            <button
-                              type="button"
-                              onClick={() => setCurrentPackage({ ...currentPackage, isTrending: !currentPackage.isTrending })}
-                              className={cn(
-                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                                currentPackage.isTrending ? 'bg-orange-500' : 'bg-slate-300'
-                              )}
-                            >
-                              <span className={cn(
-                                "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                                currentPackage.isTrending ? 'translate-x-6' : 'translate-x-1'
-                              )} />
-                            </button>
-                          </div>
-                       </div>
-                    </div>
-
-                    <div className="space-y-6">
+                   {editorTab === 'narrative' && (
+                     <motion.div
+                       key="narrative"
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -10 }}
+                       className="space-y-6"
+                     >
                        <div className="space-y-2">
                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                             <ImageIcon size={12} className="mr-2" />
-                             Package Assets
-                          </label>
-                          {uploadError && (
-                            <motion.div 
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              className="mb-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center space-x-3 text-rose-600 shadow-sm"
-                            >
-                              <AlertTriangle size={16} className="shrink-0 text-rose-500" />
-                              <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed flex-grow">{uploadError}</p>
-                              <button onClick={() => setUploadError(null)} className="p-1 hover:bg-rose-100 rounded-lg transition-colors">
-                                <X size={14} />
-                              </button>
-                            </motion.div>
-                          )}
-                          <div className="grid grid-cols-3 gap-3 mb-4">
-                            {currentPackage.images?.map((img, idx) => (
-                              <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group border border-slate-100 shadow-sm">
-                                <img src={img} className="w-full h-full object-cover" alt="" />
-                                <button 
-                                  onClick={() => removeImage(idx)}
-                                  className="absolute top-1 right-1 p-1 bg-white/90 backdrop-blur-sm rounded-md text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                                >
-                                  <X size={14} />
-                                </button>
-                              </div>
-                            ))}
-                            <button 
-                              onClick={() => fileInputRef.current?.click()}
-                              disabled={isUploading}
-                              className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:border-orange-300 hover:text-orange-500 transition-all bg-slate-50/50 relative overflow-hidden"
-                            >
-                              {isUploading ? (
-                                <div className="flex flex-col items-center justify-center p-2 w-full h-full bg-orange-50/50">
-                                  <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-2" />
-                                  <span className="text-[10px] font-black text-orange-600">{Math.round(uploadProgress)}%</span>
-                                  <div className="absolute bottom-0 left-0 h-1 bg-orange-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                                </div>
-                              ) : (
-                                <>
-                                  <Upload size={20} className="mb-2" />
-                                  <span className="text-[10px] font-bold uppercase">Upload</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                          <input 
-                            ref={fileInputRef}
-                            type="file" 
-                            multiple 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={handleImageUpload} 
-                          />
-                          <div className="flex items-center space-x-2">
-                            <input 
-                              id="add-image-link-input"
-                              className="flex-grow bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-orange-500 transition-all"
-                              placeholder="Or paste image URL here..."
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const val = (e.target as HTMLInputElement).value;
-                                  if (val) {
-                                    setCurrentPackage({ ...currentPackage, images: [...(currentPackage.images || []), val] });
-                                    (e.target as HTMLInputElement).value = '';
-                                  }
-                                }
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const input = document.getElementById('add-image-link-input') as HTMLInputElement;
-                                if (input && input.value) {
-                                  setCurrentPackage({ ...currentPackage, images: [...(currentPackage.images || []), input.value] });
-                                  input.value = '';
-                                }
-                              }}
-                              className="px-4 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-orange-500 transition-colors"
-                            >
-                              Add Link
-                            </button>
-                          </div>
-                       </div>
-                       
-                       <div className="space-y-4">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                             <Layers size={12} className="mr-2" />
-                             Itinerary Details
-                          </label>
-                          {currentPackage.itineraryDetails?.map((detail, idx) => (
-                            <div key={idx} className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 relative">
-                              <button 
-                                onClick={() => {
-                                  const newDetails = [...(currentPackage.itineraryDetails || [])];
-                                  newDetails.splice(idx, 1);
-                                  setCurrentPackage({ ...currentPackage, itineraryDetails: newDetails });
-                                }}
-                                className="absolute top-4 right-4 text-slate-400 hover:text-red-500"
-                              >
-                                <XCircle size={16} />
-                              </button>
-                              <input 
-                                type="text"
-                                className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-orange-500"
-                                placeholder="Day / Title (e.g. Day 1: Arrival)"
-                                value={detail.title}
-                                onChange={(e) => {
-                                  const newDetails = [...(currentPackage.itineraryDetails || [])];
-                                  newDetails[idx].title = e.target.value;
-                                  setCurrentPackage({ ...currentPackage, itineraryDetails: newDetails });
-                                }}
-                              />
-                              <textarea 
-                                rows={3}
-                                className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-500 resize-none"
-                                placeholder="Description..."
-                                value={detail.description}
-                                onChange={(e) => {
-                                  const newDetails = [...(currentPackage.itineraryDetails || [])];
-                                  newDetails[idx].description = e.target.value;
-                                  setCurrentPackage({ ...currentPackage, itineraryDetails: newDetails });
-                                }}
-                              />
-                            </div>
-                          ))}
-                          <button 
-                            onClick={() => setCurrentPackage({ 
-                              ...currentPackage, 
-                              itineraryDetails: [...(currentPackage.itineraryDetails || []), { title: '', description: '' }] 
-                            })}
-                            className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 transition-colors text-xs uppercase tracking-wider"
-                          >
-                            + Add Itinerary Item
-                          </button>
-                       </div>
-
-                       <div className="space-y-4">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                             <Info size={12} className="mr-2" />
-                             Additional Information Cards
-                          </label>
-                          {currentPackage.additionalInfo?.map((info, idx) => (
-                            <div key={idx} className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 relative">
-                              <button 
-                                onClick={() => {
-                                  const newInfo = [...(currentPackage.additionalInfo || [])];
-                                  newInfo.splice(idx, 1);
-                                  setCurrentPackage({ ...currentPackage, additionalInfo: newInfo });
-                                }}
-                                className="absolute top-4 right-4 text-slate-400 hover:text-red-500"
-                              >
-                                <XCircle size={16} />
-                              </button>
-                              <input 
-                                type="text"
-                                className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-orange-500"
-                                placeholder="Card Title (e.g. Visa Requirements)"
-                                value={info.title}
-                                onChange={(e) => {
-                                  const newInfo = [...(currentPackage.additionalInfo || [])];
-                                  newInfo[idx].title = e.target.value;
-                                  setCurrentPackage({ ...currentPackage, additionalInfo: newInfo });
-                                }}
-                              />
-                              <textarea 
-                                rows={3}
-                                className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-500 resize-none"
-                                placeholder="Detailed information..."
-                                value={info.description}
-                                onChange={(e) => {
-                                  const newInfo = [...(currentPackage.additionalInfo || [])];
-                                  newInfo[idx].description = e.target.value;
-                                  setCurrentPackage({ ...currentPackage, additionalInfo: newInfo });
-                                }}
-                              />
-                            </div>
-                          ))}
-                          <button 
-                            onClick={() => setCurrentPackage({ 
-                              ...currentPackage, 
-                              additionalInfo: [...(currentPackage.additionalInfo || []), { title: '', description: '' }] 
-                            })}
-                            className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 transition-colors text-xs uppercase tracking-wider"
-                          >
-                            + Add Info Card
-                          </button>
-                       </div>
-                       
-                       <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                             <Layers size={12} className="mr-2" />
-                             <span className="flex justify-between items-center w-full">
-                                <span>{currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? 'AI-Generated Markdown Itinerary' : 'Itinerary / Features (One per line)'}</span>
-                                {currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (confirm("Are you sure you want to convert this Markdown itinerary into a line-by-line list?")) {
-                                        setCurrentPackage({ ...currentPackage, itinerary: ensureItineraryArray(currentPackage.itinerary) });
-                                      }
-                                    }}
-                                    className="text-[9px] font-black text-orange-600 hover:underline uppercase tracking-wider ml-2 shadow-none border-0 bg-transparent py-0 px-0 cursor-pointer"
-                                  >
-                                    Convert to Line List
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (confirm("Convert this bulleted list into a single editable Markdown string?")) {
-                                        setCurrentPackage({ ...currentPackage, itinerary: ensureItineraryArray(currentPackage.itinerary).join('\n') });
-                                      }
-                                    }}
-                                    className="text-[9px] font-black text-sky-600 hover:underline uppercase tracking-wider ml-2 shadow-none border-0 bg-transparent py-0 px-0 cursor-pointer"
-                                  >
-                                    Convert to Raw Text
-                                  </button>
-                                )}
-                              </span>
+                             <FileText size={12} className="mr-2 text-orange-500" />
+                             Detailed Narrative Description
                           </label>
                           <textarea 
-                            rows={currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? 10 : 3}
-                            className={`w-full bg-slate-50 border border-slate-100 rounded-[1rem] px-5 py-4 text-sm font-medium outline-none focus:border-orange-500 transition-all resize-none leading-relaxed ${currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? 'font-mono text-xs' : ''}`}
-                            placeholder="Day 1: Arrival...&#10;Day 2: City Tour..."
-                            value={currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? currentPackage.itinerary : ensureItineraryArray(currentPackage.itinerary).join('\n')}
-                            onChange={(e) => setCurrentPackage({ 
-                              ...currentPackage, 
-                              itinerary: currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? e.target.value : e.target.value.split('\n').filter(line => line.trim() !== '')
-                            })}
-                          />
-                       </div>
-                       
-                       <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                             <Info size={12} className="mr-2" />
-                             Detailed Narrative
-                          </label>
-                          <textarea 
-                            rows={4}
-                            className="w-full bg-slate-50 border border-slate-100 rounded-[2rem] px-5 py-4 text-sm font-medium outline-none focus:border-orange-500 transition-all resize-none"
+                            rows={8}
+                            className="w-full bg-slate-50 border border-slate-100 rounded-[2rem] px-6 py-5 text-sm font-medium outline-none focus:border-orange-500 focus:bg-white transition-all leading-relaxed shadow-sm resize-none"
+                            placeholder="Provide a high-quality rich description about this luxury package..."
                             value={currentPackage.description}
                             onChange={(e) => setCurrentPackage({ ...currentPackage, description: e.target.value })}
                           />
                        </div>
-                    </div>
-                 </div>
-              </div>
+                     </motion.div>
+                   )}
+
+                   {editorTab === 'media' && (
+                     <motion.div
+                       key="media"
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -10 }}
+                       className="space-y-6"
+                     >
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                              <ImageIcon size={12} className="mr-2 text-orange-500" />
+                              Package Image Gallery
+                           </label>
+                           
+                           {uploadError && (
+                             <motion.div 
+                               initial={{ opacity: 0, x: -10 }}
+                               animate={{ opacity: 1, x: 0 }}
+                               className="mb-4 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center space-x-3 text-rose-600 shadow-sm"
+                             >
+                               <AlertTriangle size={16} className="shrink-0 text-rose-500" />
+                               <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed flex-grow">{uploadError}</p>
+                               <button onClick={() => setUploadError(null)} className="p-1 hover:bg-rose-100 rounded-lg transition-colors">
+                                 <X size={14} />
+                               </button>
+                             </motion.div>
+                           )}
+
+                           <div className="grid grid-cols-4 gap-4 mb-6">
+                             {currentPackage.images?.map((img, idx) => (
+                               <div key={idx} className="relative aspect-[4/3] rounded-2xl overflow-hidden group border border-slate-100 shadow-sm">
+                                 <img src={img} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                                 <button 
+                                   onClick={() => removeImage(idx)}
+                                   className="absolute top-2 right-2 p-2 bg-rose-500 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                 >
+                                   <Trash2 size={12} />
+                                 </button>
+                               </div>
+                             ))}
+                             
+                             <button 
+                               onClick={() => fileInputRef.current?.click()}
+                               disabled={isUploading}
+                               className="aspect-[4/3] rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:border-orange-300 hover:text-orange-500 hover:bg-orange-50/10 transition-all bg-slate-50 relative overflow-hidden"
+                             >
+                               {isUploading ? (
+                                 <div className="flex flex-col items-center justify-center p-2 w-full h-full bg-orange-50/50">
+                                   <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-2" />
+                                   <span className="text-[10px] font-black text-orange-600">{Math.round(uploadProgress)}%</span>
+                                   <div className="absolute bottom-0 left-0 h-1.5 bg-orange-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                                 </div>
+                               ) : (
+                                 <>
+                                   <Upload size={24} className="mb-2 text-slate-400" />
+                                   <span className="text-[10px] font-black uppercase tracking-wider">Upload File</span>
+                                 </>
+                               )}
+                             </button>
+                           </div>
+
+                           <input 
+                             ref={fileInputRef}
+                             type="file" 
+                             multiple 
+                             accept="image/*" 
+                             className="hidden" 
+                             onChange={handleImageUpload} 
+                           />
+
+                           <div className="flex items-center space-x-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                             <input 
+                               id="add-image-link-input"
+                               className="flex-grow bg-white border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-orange-500 transition-all shadow-sm"
+                               placeholder="Or paste external image URL here..."
+                               onKeyDown={(e) => {
+                                 if (e.key === 'Enter') {
+                                   e.preventDefault();
+                                   const val = (e.target as HTMLInputElement).value;
+                                   if (val) {
+                                     setCurrentPackage({ ...currentPackage, images: [...(currentPackage.images || []), val] });
+                                     (e.target as HTMLInputElement).value = '';
+                                   }
+                                 }
+                               }}
+                             />
+                             <button
+                               type="button"
+                               onClick={() => {
+                                 const input = document.getElementById('add-image-link-input') as HTMLInputElement;
+                                 if (input && input.value) {
+                                   setCurrentPackage({ ...currentPackage, images: [...(currentPackage.images || []), input.value] });
+                                   input.value = '';
+                                 }
+                               }}
+                               className="px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-orange-500 transition-colors shadow-sm"
+                             >
+                               Add URL
+                             </button>
+                           </div>
+                        </div>
+                     </motion.div>
+                   )}
+
+                   {editorTab === 'itinerary' && (
+                     <motion.div
+                       key="itinerary"
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -10 }}
+                       className="space-y-6"
+                     >
+                        {/* Day-by-day nested cards */}
+                        <div className="space-y-4">
+                           <div className="flex justify-between items-center mb-2">
+                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                                <MapPin size={12} className="mr-2 text-orange-500" />
+                                Structured Daily Milestones
+                             </label>
+                           </div>
+
+                           {currentPackage.itineraryDetails?.map((detail, idx) => (
+                             <div key={idx} className="space-y-3 bg-slate-50/50 p-6 rounded-3xl border border-slate-100 relative group shadow-sm hover:border-slate-200 transition-all">
+                               <button 
+                                 onClick={() => {
+                                   const newDetails = [...(currentPackage.itineraryDetails || [])];
+                                   newDetails.splice(idx, 1);
+                                   setCurrentPackage({ ...currentPackage, itineraryDetails: newDetails });
+                                 }}
+                                 className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                               >
+                                 <Trash2 size={16} />
+                               </button>
+                               
+                               <div className="flex gap-4">
+                                 <div className="w-10 h-10 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center font-black text-sm shrink-0">
+                                   {idx + 1}
+                                 </div>
+                                 <div className="flex-grow space-y-3">
+                                   <input 
+                                     type="text"
+                                     className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-xs font-black outline-none focus:border-orange-500 shadow-sm"
+                                     placeholder="Day / Subtitle (e.g. Day 1: Makkah Arrival)"
+                                     value={detail.title}
+                                     onChange={(e) => {
+                                       const newDetails = [...(currentPackage.itineraryDetails || [])];
+                                       newDetails[idx].title = e.target.value;
+                                       setCurrentPackage({ ...currentPackage, itineraryDetails: newDetails });
+                                     }}
+                                   />
+                                   <textarea 
+                                     rows={2}
+                                     className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-xs font-medium outline-none focus:border-orange-500 shadow-sm resize-none"
+                                     placeholder="Describe the day's events, locations, stays..."
+                                     value={detail.description}
+                                     onChange={(e) => {
+                                       const newDetails = [...(currentPackage.itineraryDetails || [])];
+                                       newDetails[idx].description = e.target.value;
+                                       setCurrentPackage({ ...currentPackage, itineraryDetails: newDetails });
+                                     }}
+                                   />
+                                 </div>
+                               </div>
+                             </div>
+                           ))}
+
+                           <button 
+                             onClick={() => setCurrentPackage({ 
+                               ...currentPackage, 
+                               itineraryDetails: [...(currentPackage.itineraryDetails || []), { title: '', description: '' }] 
+                             })}
+                             className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 hover:bg-orange-50/5 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+                           >
+                             <Plus size={14} />
+                             <span>Add Day-by-Day Milestone</span>
+                           </button>
+                        </div>
+
+                        {/* Standard Quick bullet lists */}
+                        <div className="space-y-2 border-t border-slate-100 pt-6">
+                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                              <span className="flex items-center">
+                                <CheckCircle2 size={12} className="mr-2 text-orange-500" />
+                                {currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? 'AI-Generated Markdown Summary' : 'Package Inclusions / Short List (One per line)'}
+                              </span>
+                              
+                              {currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (confirm("Are you sure you want to convert this Markdown text into line list items?")) {
+                                      setCurrentPackage({ ...currentPackage, itinerary: ensureItineraryArray(currentPackage.itinerary) });
+                                    }
+                                  }}
+                                  className="text-[9px] font-black text-orange-600 hover:underline uppercase tracking-wider"
+                                >
+                                  Convert to Line List
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (confirm("Convert this bulleted list into a raw multiline text field?")) {
+                                      setCurrentPackage({ ...currentPackage, itinerary: ensureItineraryArray(currentPackage.itinerary).join('\n') });
+                                    }
+                                  }}
+                                  className="text-[9px] font-black text-sky-600 hover:underline uppercase tracking-wider"
+                                >
+                                  Convert to Raw Text
+                                </button>
+                              )}
+                           </label>
+                           
+                           <textarea 
+                             rows={currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? 8 : 4}
+                             className={`w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold outline-none focus:border-orange-500 focus:bg-white transition-all resize-none leading-relaxed shadow-sm ${currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? 'font-mono text-[11px]' : ''}`}
+                             placeholder="Flight tickets included&#10;5-Star Hotel Stay&#10;Visa Processing included"
+                             value={currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? currentPackage.itinerary : ensureItineraryArray(currentPackage.itinerary).join('\n')}
+                             onChange={(e) => setCurrentPackage({ 
+                               ...currentPackage, 
+                               itinerary: currentPackage.itinerary && typeof currentPackage.itinerary === 'string' ? e.target.value : e.target.value.split('\n').filter(line => line.trim() !== '')
+                             })}
+                           />
+                        </div>
+                     </motion.div>
+                   )}
+
+                   {editorTab === 'infocards' && (
+                     <motion.div
+                       key="infocards"
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -10 }}
+                       className="space-y-6"
+                     >
+                        <div className="space-y-4">
+                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                              <Layers size={12} className="mr-2 text-orange-500" />
+                              Specifications, Terms, and Custom Info Cards
+                           </label>
+
+                           {currentPackage.additionalInfo?.map((info, idx) => (
+                             <div key={idx} className="space-y-3 bg-slate-50/50 p-6 rounded-3xl border border-slate-100 relative group shadow-sm hover:border-slate-200 transition-all">
+                               <button 
+                                 onClick={() => {
+                                   const newInfo = [...(currentPackage.additionalInfo || [])];
+                                   newInfo.splice(idx, 1);
+                                   setCurrentPackage({ ...currentPackage, additionalInfo: newInfo });
+                                 }}
+                                 className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                               >
+                                 <Trash2 size={16} />
+                               </button>
+
+                               <input 
+                                 type="text"
+                                 className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-xs font-black outline-none focus:border-orange-500 shadow-sm"
+                                 placeholder="Card Title (e.g. Flight Schedule, Visa Guidelines)"
+                                 value={info.title}
+                                 onChange={(e) => {
+                                   const newInfo = [...(currentPackage.additionalInfo || [])];
+                                   newInfo[idx].title = e.target.value;
+                                   setCurrentPackage({ ...currentPackage, additionalInfo: newInfo });
+                                 }}
+                               />
+                               <textarea 
+                                 rows={3}
+                                 className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-xs outline-none focus:border-orange-500 shadow-sm resize-none"
+                                 placeholder="Detailed rules, bullet items, or term details..."
+                                 value={info.description}
+                                 onChange={(e) => {
+                                   const newInfo = [...(currentPackage.additionalInfo || [])];
+                                   newInfo[idx].description = e.target.value;
+                                   setCurrentPackage({ ...currentPackage, additionalInfo: newInfo });
+                                 }}
+                               />
+                             </div>
+                           ))}
+
+                           <button 
+                             onClick={() => setCurrentPackage({ 
+                               ...currentPackage, 
+                               additionalInfo: [...(currentPackage.additionalInfo || []), { title: '', description: '' }] 
+                             })}
+                             className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 hover:bg-orange-50/5 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+                           >
+                             <Plus size={14} />
+                             <span>Add New Spec Card</span>
+                           </button>
+                        </div>
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
+               </div>    </div>
 
               <div className="p-10 bg-slate-50 flex justify-between items-center border-t border-slate-100">
                  <div className="flex items-center space-x-3 text-slate-400">

@@ -10,6 +10,7 @@ import { db } from '@/src/lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/src/components/layout/ToastContext';
 import Testimonials from '@/src/components/Testimonials';
+import InteractiveTourPlanner from '@/src/components/InteractiveTourPlanner';
 
 const CATEGORIES = [
   { 
@@ -1196,6 +1197,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Interactive Custom Tour Planner & Lead Capture */}
+      <InteractiveTourPlanner />
 
       {/* Reviews */}
       <Testimonials />

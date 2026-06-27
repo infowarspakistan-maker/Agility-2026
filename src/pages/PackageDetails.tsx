@@ -4,7 +4,7 @@ import { db, auth } from '@/src/lib/firebase';
 import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
 import { TravelPackage, Booking, Passenger } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar, FileText, Download } from 'lucide-react';
+import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar, FileText, Download, Info } from 'lucide-react';
 import { cn, formatCurrency, optimizeImageUrl, compressImage, ensureItineraryArray } from '@/src/lib/utils';
 import { extractPassengerFromPassport } from '@/src/services/aiService';
 import { useToast } from '@/src/components/layout/ToastContext';
@@ -13,6 +13,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { jsPDF } from 'jspdf';
 import Markdown from 'react-markdown';
+import TourPackageSchema from '@/src/components/TourPackageSchema';
 
 export default function PackageDetails() {
   const toast = useToast();
@@ -25,6 +26,7 @@ export default function PackageDetails() {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [scanningIndex, setScanningIndex] = useState<number | null>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
+  const [activeImageIdx, setActiveImageIdx] = useState<number>(0);
 
   const generatePDF = () => {
     if (!pkg) return;
@@ -318,6 +320,71 @@ export default function PackageDetails() {
     load();
   }, [id]);
 
+  useEffect(() => {
+    if (pkg) {
+      document.title = `${pkg.title} | Agility Travels`;
+      
+      const description = `Discover our premium ${pkg.title} package. Duration: ${pkg.duration}, Category: ${pkg.category}. Starting at ${pkg.price} ${pkg.currency}. View inclusions and full daily itineraries.`;
+      
+      const descMeta = document.querySelector('meta[name="description"]');
+      if (descMeta) {
+        descMeta.setAttribute('content', description);
+      }
+      
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) ogTitle.setAttribute('content', `${pkg.title} | Agility Travels`);
+      
+      const ogDesc = document.querySelector('meta[property="og:description"]');
+      if (ogDesc) ogDesc.setAttribute('content', description);
+      
+      // Inject Product / Offer Structured Data Schema for Google Rich Snippets
+      const oldJsonLd = document.getElementById('seo-structured-data-package');
+      if (oldJsonLd) oldJsonLd.remove();
+      
+      const script = document.createElement('script');
+      script.id = 'seo-structured-data-package';
+      script.type = 'application/ld+json';
+      
+      const productSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        'name': pkg.title,
+        'image': pkg.images && pkg.images.length > 0 ? pkg.images[0] : 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=800',
+        'description': description,
+        'offers': {
+          '@type': 'Offer',
+          'price': pkg.price,
+          'priceCurrency': pkg.currency || 'PKR',
+          'availability': 'https://schema.org/InStock',
+          'seller': {
+            '@type': 'TravelAgency',
+            'name': 'Agility Travels'
+          }
+        },
+        'additionalProperty': [
+          {
+            '@type': 'PropertyValue',
+            'name': 'Duration',
+            'value': pkg.duration
+          },
+          {
+            '@type': 'PropertyValue',
+            'name': 'Category',
+            'value': pkg.category
+          }
+        ]
+      };
+      
+      script.text = JSON.stringify(productSchema);
+      document.head.appendChild(script);
+    }
+    
+    return () => {
+      const oldJsonLd = document.getElementById('seo-structured-data-package');
+      if (oldJsonLd) oldJsonLd.remove();
+    };
+  }, [pkg]);
+
   const addPassenger = () => {
     setPassengers([...passengers, { 
       name: '', 
@@ -541,6 +608,7 @@ export default function PackageDetails() {
 
   return (
     <div className="pt-32 pb-20 px-4 max-w-7xl mx-auto">
+      <TourPackageSchema pkg={pkg} />
       <Link to={`/packages/${pkg.type}`} className="inline-flex items-center text-sm font-bold text-slate-400 hover:text-orange-500 mb-8 transition-colors">
         <ArrowLeft className="mr-2 w-4 h-4" />
         Back to Results
@@ -599,8 +667,54 @@ export default function PackageDetails() {
                  exit={{ opacity: 0, x: 20 }}
                  key="step1"
                >
-                 <div className="rounded-3xl overflow-hidden mb-8 h-[400px]">
-                    <img src={optimizeImageUrl(pkg.images[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 1200, 80)} alt={`${pkg.title || 'Package'} - Main view`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                 {/* Interactive Image Gallery */}
+                 <div className="space-y-4 mb-8">
+                   <div className="rounded-[2rem] overflow-hidden h-[420px] bg-slate-100 relative group shadow-sm border border-slate-100/50">
+                      <img 
+                        src={optimizeImageUrl(pkg.images?.[activeImageIdx] || pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 1200, 80)} 
+                        alt={`${pkg.title || 'Package'} - View ${activeImageIdx + 1}`} 
+                        className="w-full h-full object-cover transition-all duration-500" 
+                        referrerPolicy="no-referrer" 
+                      />
+                      {pkg.images && pkg.images.length > 1 && (
+                        <>
+                          <button 
+                            onClick={() => setActiveImageIdx(prev => (prev === 0 ? pkg.images.length - 1 : prev - 1))}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/95 backdrop-blur-sm rounded-full text-slate-800 hover:bg-orange-500 hover:text-white transition-all shadow-lg opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                          >
+                            <ArrowLeft size={16} />
+                          </button>
+                          <button 
+                            onClick={() => setActiveImageIdx(prev => (prev === pkg.images.length - 1 ? 0 : prev + 1))}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/95 backdrop-blur-sm rounded-full text-slate-800 hover:bg-orange-500 hover:text-white transition-all shadow-lg opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                          >
+                            <ArrowRight size={16} />
+                          </button>
+                        </>
+                      )}
+                      
+                      <div className="absolute bottom-4 right-4 bg-slate-950/80 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-sm">
+                        Image {(pkg.images && pkg.images.length > 0) ? activeImageIdx + 1 : 0} of {(pkg.images && pkg.images.length) || 0}
+                      </div>
+                   </div>
+
+                   {/* Thumbnails row */}
+                   {pkg.images && pkg.images.length > 1 && (
+                     <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+                       {pkg.images.map((img, idx) => (
+                         <button
+                           key={idx}
+                           onClick={() => setActiveImageIdx(idx)}
+                           className={cn(
+                             "w-24 h-16 rounded-2xl overflow-hidden flex-shrink-0 border-2 transition-all shadow-sm",
+                             activeImageIdx === idx ? "border-orange-500 scale-[1.03] ring-4 ring-orange-500/10" : "border-slate-100 hover:border-slate-300"
+                           )}
+                         >
+                           <img src={optimizeImageUrl(img, 150, 100)} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                         </button>
+                       ))}
+                     </div>
+                   )}
                  </div>
                  <div className="prose prose-slate max-w-none">
                     <h3 className="text-2xl font-bold mb-4">About this package</h3>
@@ -646,15 +760,67 @@ export default function PackageDetails() {
                     )}
 
                     {pkg.additionalInfo && pkg.additionalInfo.length > 0 && (
-                      <div className="mb-8">
-                        <h3 className="text-2xl font-bold mb-4">Additional Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {pkg.additionalInfo.map((info, idx) => (
-                            <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                              <h4 className="font-bold text-slate-900 mb-2">{info.title}</h4>
-                              <p className="text-slate-600 text-sm whitespace-pre-wrap">{info.description}</p>
-                            </div>
-                          ))}
+                      <div className="mb-10">
+                        <h3 className="text-2xl font-black text-slate-950 mb-6 tracking-tight flex items-center gap-2">
+                          <Sparkles className="text-orange-500 w-5 h-5" />
+                          <span>Key Terms & Essential Info</span>
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {pkg.additionalInfo.map((info, idx) => {
+                            const lines = info.description.split('\n').filter(line => line.trim() !== '');
+                            
+                            // Dynamically resolve card color & icon based on title
+                            const lowercaseTitle = info.title.toLowerCase();
+                            let titleColor = "text-orange-500 bg-orange-50 border-orange-100/50";
+                            let iconEl = <Info size={16} />;
+                            let sideBorder = "from-orange-500/80 via-amber-500/80 to-yellow-400/80";
+
+                            if (lowercaseTitle.includes('visa') || lowercaseTitle.includes('requirement') || lowercaseTitle.includes('document') || lowercaseTitle.includes('passport')) {
+                              titleColor = "text-purple-600 bg-purple-50 border-purple-100/50";
+                              iconEl = <ShieldCheck size={16} />;
+                              sideBorder = "from-purple-500/80 via-indigo-500/80 to-blue-400/80";
+                            } else if (lowercaseTitle.includes('hotel') || lowercaseTitle.includes('stay') || lowercaseTitle.includes('accommodation') || lowercaseTitle.includes('lodging')) {
+                              titleColor = "text-emerald-600 bg-emerald-50 border-emerald-100/50";
+                              iconEl = <Landmark size={16} />;
+                              sideBorder = "from-emerald-500/80 via-teal-500/80 to-cyan-400/80";
+                            } else if (lowercaseTitle.includes('flight') || lowercaseTitle.includes('ticket') || lowercaseTitle.includes('airline') || lowercaseTitle.includes('travel')) {
+                              titleColor = "text-sky-600 bg-sky-50 border-sky-100/50";
+                              iconEl = <Calendar size={16} />;
+                              sideBorder = "from-sky-500/80 via-blue-500/80 to-indigo-400/80";
+                            } else if (lowercaseTitle.includes('inclusion') || lowercaseTitle.includes('include') || lowercaseTitle.includes('what\'s in')) {
+                              titleColor = "text-emerald-600 bg-emerald-50 border-emerald-100/50";
+                              iconEl = <CheckCircle2 size={16} />;
+                              sideBorder = "from-emerald-400/80 via-emerald-600/80 to-teal-500/80";
+                            }
+
+                            return (
+                              <div key={idx} className="bg-white rounded-[2rem] border border-slate-100 shadow-[0_4px_25px_rgba(0,0,0,0.01)] hover:shadow-[0_15px_45px_rgba(0,0,0,0.04)] hover:border-slate-200 transition-all duration-300 overflow-hidden flex flex-col justify-between">
+                                {/* Colored header indicator stripe */}
+                                <div className={`h-1.5 w-full bg-gradient-to-r ${sideBorder}`} />
+                                
+                                <div className="p-8 flex-grow">
+                                  <div className="flex items-center space-x-3 mb-4">
+                                     <div className={cn("p-2.5 rounded-xl border flex items-center justify-center shrink-0", titleColor)}>
+                                        {iconEl}
+                                     </div>
+                                     <h4 className="font-extrabold text-slate-950 text-sm tracking-tight">{info.title}</h4>
+                                  </div>
+                                  
+                                  <div className="space-y-2.5 font-sans">
+                                     {lines.map((line, lIdx) => {
+                                       const cleanLine = line.replace(/^[•\-\*\s]+/, '');
+                                       return (
+                                         <div key={lIdx} className="flex items-start text-xs text-slate-600 leading-relaxed gap-2.5">
+                                           <div className="w-1.5 h-1.5 rounded-full bg-orange-500/60 mt-1.5 shrink-0" />
+                                           <span className="font-medium">{cleanLine}</span>
+                                         </div>
+                                       );
+                                     })}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

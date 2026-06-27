@@ -1,13 +1,15 @@
 import { useState, useEffect, ChangeEvent } from 'react';
+import Markdown from 'react-markdown';
 import { auth, db } from '@/src/lib/firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, addDoc, setDoc } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
 import { Booking, UserProfile, VisaRequest } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   User, Mail, Phone, MapPin, Package, LogOut, ChevronRight, 
   Clock, CheckCircle2, ShieldCheck, FileText, Users, Edit3, 
-  Save, X, Upload, Globe, XCircle, Info, AlertTriangle, Loader2
+  Save, X, Upload, Globe, XCircle, Info, AlertTriangle, Loader2,
+  Sparkles, Compass, Utensils, Baby, Accessibility, Printer, Heart
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/src/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +38,181 @@ export default function Profile() {
   const [verificationSent, setVerificationSent] = useState(false);
   const [exportingBookingId, setExportingBookingId] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // AI Personalized Itinerary States
+  const [selectedBookingForItinerary, setSelectedBookingForItinerary] = useState<Booking | null>(null);
+  const [itineraryModalOpen, setItineraryModalOpen] = useState(false);
+  const [activeItinerary, setActiveItinerary] = useState('');
+  const [itineraryLoading, setItineraryLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [itineraryPreferences, setItineraryPreferences] = useState({
+    pace: 'Balanced',
+    interest: 'Sightseeing & Landmarks',
+    dietary: 'Halal Only',
+    travelingWithKids: false,
+    travelingWithElderly: false,
+    extraNotes: ''
+  });
+
+  useEffect(() => {
+    if (itineraryLoading) {
+      const interval = setInterval(() => {
+        setLoadingStep(prev => (prev + 1) % 4);
+      }, 2500);
+      return () => clearInterval(interval);
+    }
+  }, [itineraryLoading]);
+
+  const loadingMessages = [
+    "Analyzing booking details & travel duration...",
+    "Consulting local attractions and optimizing sequence...",
+    "Mapping dietary criteria and mobility parameters...",
+    "Structuring premium markdown daily timeline..."
+  ];
+
+  const loadSavedItinerary = async (bookingId: string) => {
+    try {
+      const docRef = doc(db, 'personalizedItineraries', bookingId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setActiveItinerary(data.text || '');
+        if (data.preferences) {
+          setItineraryPreferences({
+            pace: data.preferences.pace || 'Balanced',
+            interest: data.preferences.interest || 'Sightseeing & Landmarks',
+            dietary: data.preferences.dietary || 'Halal Only',
+            travelingWithKids: data.preferences.travelingWithKids || false,
+            travelingWithElderly: data.preferences.travelingWithElderly || false,
+            extraNotes: data.preferences.extraNotes || ''
+          });
+        }
+      } else {
+        setActiveItinerary('');
+      }
+    } catch (err) {
+      console.error("Failed to load saved itinerary:", err);
+    }
+  };
+
+  const handleOpenItineraryModule = async (booking: Booking) => {
+    setSelectedBookingForItinerary(booking);
+    setItineraryModalOpen(true);
+    setItineraryLoading(true);
+    
+    let defaultInterest = "Sightseeing & Landmarks";
+    if (booking.packageType === 'umrah' || booking.packageType === 'haj') {
+      defaultInterest = "Spiritual & Pilgrimage Focus";
+    } else if (booking.packageType === 'study-abroad') {
+      defaultInterest = "Academic & Study Preparation";
+    } else if (booking.packageType === 'expo' || booking.packageType === 'corporate') {
+      defaultInterest = "Corporate & Business Networking";
+    }
+    
+    setItineraryPreferences({
+      pace: 'Balanced',
+      interest: defaultInterest,
+      dietary: 'Halal Only',
+      travelingWithKids: false,
+      travelingWithElderly: false,
+      extraNotes: ''
+    });
+
+    await loadSavedItinerary(booking.id);
+    setItineraryLoading(false);
+  };
+
+  const handleGeneratePersonalizedItinerary = async () => {
+    if (!selectedBookingForItinerary) return;
+    setItineraryLoading(true);
+    try {
+      const response = await fetch('/api/ai/generate-personalized-itinerary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          packageName: selectedBookingForItinerary.packageName,
+          packageType: selectedBookingForItinerary.packageType,
+          duration: selectedBookingForItinerary.preferredStartDate && selectedBookingForItinerary.preferredEndDate
+            ? "Custom Scheduled Dates" 
+            : "Planned Duration",
+          startDate: selectedBookingForItinerary.preferredStartDate,
+          endDate: selectedBookingForItinerary.preferredEndDate,
+          passengers: selectedBookingForItinerary.passengers,
+          pace: itineraryPreferences.pace,
+          interest: itineraryPreferences.interest,
+          dietary: itineraryPreferences.dietary,
+          travelingWithKids: itineraryPreferences.travelingWithKids,
+          travelingWithElderly: itineraryPreferences.travelingWithElderly,
+          extraNotes: itineraryPreferences.extraNotes
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate personalized itinerary");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        setActiveItinerary(data.text);
+        
+        const docRef = doc(db, 'personalizedItineraries', selectedBookingForItinerary.id);
+        await setDoc(docRef, {
+          text: data.text,
+          updatedAt: new Date().toISOString(),
+          preferences: itineraryPreferences,
+          bookingId: selectedBookingForItinerary.id,
+          userId: auth.currentUser?.uid
+        });
+        
+        toast.success("AI Itinerary successfully generated and saved durably!");
+      } else {
+        toast.error("Generation failed. Please try again.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to generate itinerary");
+    } finally {
+      setItineraryLoading(false);
+    }
+  };
+
+  const handlePrintItinerary = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${selectedBookingForItinerary?.packageName} - AI Itinerary</title>
+          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+          <style>
+            body { font-family: sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; }
+            h1, h2, h3 { color: #f97316; margin-top: 1.5em; margin-bottom: 0.5em; font-weight: bold; }
+            h1 { font-size: 2em; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.5em; }
+            h2 { font-size: 1.5em; }
+            h3 { font-size: 1.2em; }
+            p { margin-bottom: 1em; }
+            ul, ol { margin-left: 20px; margin-bottom: 1em; list-style-type: disc; }
+            li { margin-bottom: 0.5em; }
+          </style>
+        </head>
+        <body>
+          <h1>Personalized AI Travel Itinerary</h1>
+          <p><strong>Package Name:</strong> ${selectedBookingForItinerary?.packageName}</p>
+          <p><strong>Duration:</strong> ${selectedBookingForItinerary?.preferredStartDate ? `${selectedBookingForItinerary.preferredStartDate} to ${selectedBookingForItinerary.preferredEndDate}` : 'Scheduled Duration'}</p>
+          <p><strong>Pace:</strong> ${itineraryPreferences.pace} | <strong>Interest:</strong> ${itineraryPreferences.interest}</p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+          <div>${activeItinerary.replace(/\n/g, '<br/>')}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
 
   useEffect(() => {
     async function load() {
@@ -640,9 +817,12 @@ export default function Profile() {
                                   </>
                                 )}
                               </button>
-                              <button className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] flex items-center space-x-1 group-hover:translate-x-1 transition-transform self-end sm:self-auto">
-                                 <span>Intelligence View</span>
-                                 <ChevronRight size={14} />
+                              <button 
+                                onClick={() => handleOpenItineraryModule(booking)}
+                                className="px-4 py-2.5 bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center space-x-1.5 transition-all shadow-sm border border-orange-100 self-end sm:self-auto"
+                              >
+                                 <Sparkles size={12} />
+                                 <span>AI Itinerary</span>
                               </button>
                            </div>
                         </div>
@@ -764,6 +944,260 @@ export default function Profile() {
                    </button>
                 </div>
              </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* AI Personalized Itinerary Modal */}
+      <AnimatePresence>
+        {itineraryModalOpen && selectedBookingForItinerary && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-xl p-4">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              {/* Modal Header */}
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-orange-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+                    <Sparkles size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">Agility AI Travel Intelligence</h3>
+                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{selectedBookingForItinerary.packageName}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setItineraryModalOpen(false)} 
+                  className="p-3 bg-white hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-600 transition-colors border border-slate-100"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-8 overflow-y-auto flex-grow">
+                {itineraryLoading ? (
+                  <div className="py-20 flex flex-col items-center justify-center text-center">
+                    <div className="relative mb-8">
+                      <div className="w-20 h-20 rounded-full border-4 border-orange-100 border-t-orange-500 animate-spin" />
+                      <div className="absolute inset-0 flex items-center justify-center text-orange-500">
+                        <Sparkles size={24} className="animate-pulse" />
+                      </div>
+                    </div>
+                    <h4 className="text-xl font-bold text-slate-900 mb-2">Synthesizing Travel Matrix</h4>
+                    <p className="text-slate-400 text-sm font-semibold max-w-md animate-pulse">
+                      {loadingMessages[loadingStep]}
+                    </p>
+                  </div>
+                ) : activeItinerary ? (
+                  /* Rendered Itinerary Markdown View */
+                  <div className="space-y-6">
+                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] uppercase font-black tracking-widest text-orange-500 bg-orange-50 px-3 py-1 rounded-full mb-2 inline-block">Active Parameters</span>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-slate-500 mt-1">
+                          <span>Pace: {itineraryPreferences.pace}</span>
+                          <span>•</span>
+                          <span>Focus: {itineraryPreferences.interest}</span>
+                          <span>•</span>
+                          <span>Dietary: {itineraryPreferences.dietary}</span>
+                          {(itineraryPreferences.travelingWithKids || itineraryPreferences.travelingWithElderly) && (
+                            <>
+                              <span>•</span>
+                              <span>Accommodations: {[
+                                itineraryPreferences.travelingWithKids ? "Kids" : null,
+                                itineraryPreferences.travelingWithElderly ? "Seniors" : null
+                              ].filter(Boolean).join(" & ")}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setActiveItinerary('')}
+                        className="px-5 py-2.5 bg-white text-slate-600 hover:text-orange-500 font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-slate-100 shadow-sm shrink-0 flex items-center space-x-1.5"
+                      >
+                        <Compass size={14} />
+                        <span>Re-Configure</span>
+                      </button>
+                    </div>
+
+                    <div className="prose prose-orange max-w-none text-slate-700 bg-white p-6 border border-slate-100 rounded-3xl max-h-[50vh] overflow-y-auto">
+                      <Markdown>{activeItinerary}</Markdown>
+                    </div>
+                  </div>
+                ) : (
+                  /* Preferences Configuration Form */
+                  <div className="space-y-8 max-w-2xl mx-auto py-4">
+                    <div className="text-center max-w-md mx-auto mb-8">
+                      <h4 className="text-2xl font-black text-slate-900 mb-2">Configure Your Journey</h4>
+                      <p className="text-slate-400 text-sm font-medium">Fine-tune the daily timeline parameters. Gemini will formulate recommendations optimized for your party.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Pacing */}
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center">
+                          <Compass size={14} className="mr-1.5 text-orange-500" />
+                          <span>Pace & Intensity</span>
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['Relaxed', 'Balanced', 'Intense'].map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setItineraryPreferences({...itineraryPreferences, pace: p})}
+                              className={cn(
+                                "py-3 rounded-xl text-xs font-bold border transition-all",
+                                itineraryPreferences.pace === p 
+                                  ? "bg-slate-900 border-slate-900 text-white shadow-md"
+                                  : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                              )}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Dietary preference */}
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center">
+                          <Utensils size={14} className="mr-1.5 text-orange-500" />
+                          <span>Dietary Focus</span>
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['Halal Only', 'Vegetarian', 'Standard'].map((d) => (
+                            <button
+                              key={d}
+                              type="button"
+                              onClick={() => setItineraryPreferences({...itineraryPreferences, dietary: d})}
+                              className={cn(
+                                "py-3 rounded-xl text-xs font-bold border transition-all",
+                                itineraryPreferences.dietary === d
+                                  ? "bg-slate-900 border-slate-900 text-white shadow-md"
+                                  : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                              )}
+                            >
+                              {d.split(' ')[0]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Primary Interest */}
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center">
+                        <Heart size={14} className="mr-1.5 text-orange-500" />
+                        <span>Daytime Exploration Focus</span>
+                      </label>
+                      <select
+                        value={itineraryPreferences.interest}
+                        onChange={e => setItineraryPreferences({...itineraryPreferences, interest: e.target.value})}
+                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-orange-500/20 appearance-none"
+                      >
+                        <option>Sightseeing & Landmarks</option>
+                        <option>Spiritual & Pilgrimage Focus</option>
+                        <option>Local Food & Culinary</option>
+                        <option>Academic & Campus Prep</option>
+                        <option>Corporate & Business Networking</option>
+                        <option>Shopping & Leisure Focus</option>
+                        <option>Adventure & Outdoor Activities</option>
+                      </select>
+                    </div>
+
+                    {/* Mobility / Accommodations */}
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Demographic Safeguards</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <label className={cn(
+                          "p-4 rounded-2xl border flex items-center space-x-3 cursor-pointer transition-all",
+                          itineraryPreferences.travelingWithKids ? "bg-orange-50/50 border-orange-200" : "bg-white border-slate-100"
+                        )}>
+                          <input 
+                            type="checkbox"
+                            checked={itineraryPreferences.travelingWithKids}
+                            onChange={e => setItineraryPreferences({...itineraryPreferences, travelingWithKids: e.target.checked})}
+                            className="rounded text-orange-500 focus:ring-orange-500/20 w-4 h-4"
+                          />
+                          <div className="flex items-center space-x-2">
+                            <Baby size={16} className="text-orange-500" />
+                            <span className="text-xs font-bold text-slate-700">Traveling with children</span>
+                          </div>
+                        </label>
+
+                        <label className={cn(
+                          "p-4 rounded-2xl border flex items-center space-x-3 cursor-pointer transition-all",
+                          itineraryPreferences.travelingWithElderly ? "bg-orange-50/50 border-orange-200" : "bg-white border-slate-100"
+                        )}>
+                          <input 
+                            type="checkbox"
+                            checked={itineraryPreferences.travelingWithElderly}
+                            onChange={e => setItineraryPreferences({...itineraryPreferences, travelingWithElderly: e.target.checked})}
+                            className="rounded text-orange-500 focus:ring-orange-500/20 w-4 h-4"
+                          />
+                          <div className="flex items-center space-x-2">
+                            <Accessibility size={16} className="text-orange-500" />
+                            <span className="text-xs font-bold text-slate-700">Traveling with seniors</span>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Special notes */}
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Special Requests / Preferences</label>
+                      <textarea
+                        value={itineraryPreferences.extraNotes}
+                        onChange={e => setItineraryPreferences({...itineraryPreferences, extraNotes: e.target.value})}
+                        placeholder="e.g., 'Celebrating a 10-year anniversary. I prefer walking tours, and would love to visit historically significant mosques at night.'"
+                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-orange-500/20 h-28 resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-8 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                  {activeItinerary ? "Save, print, or regenerate at any time." : "Backed by Gemini 3.5 Model Architecture."}
+                </p>
+                <div className="flex space-x-3 w-full sm:w-auto justify-end">
+                  {activeItinerary && !itineraryLoading && (
+                    <button
+                      onClick={handlePrintItinerary}
+                      className="px-6 py-4 bg-white hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-2xl transition-all border border-slate-200 shadow-sm flex items-center space-x-2"
+                    >
+                      <Printer size={16} />
+                      <span>Print/PDF</span>
+                    </button>
+                  )}
+                  <button
+                    disabled={itineraryLoading}
+                    onClick={activeItinerary ? () => setItineraryModalOpen(false) : handleGeneratePersonalizedItinerary}
+                    className="px-8 py-4 bg-orange-500 text-white rounded-2xl font-bold shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                  >
+                    {itineraryLoading ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Synthesizing...</span>
+                      </>
+                    ) : activeItinerary ? (
+                      <span>Complete View</span>
+                    ) : (
+                      <>
+                        <Sparkles size={16} />
+                        <span>Formulate Itinerary</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

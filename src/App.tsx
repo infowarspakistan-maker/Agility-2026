@@ -18,6 +18,8 @@ import Profile from '@/src/pages/Profile';
 import Admin from '@/src/pages/Admin';
 import FAQ from '@/src/pages/FAQ';
 import Contact from '@/src/pages/Contact';
+import ScrollToTop from '@/src/components/ScrollToTop';
+import SEOHandler from '@/src/components/SEOHandler';
 
 const Placeholder = ({ name }: { name: string }) => (
   <div className="min-h-screen flex flex-col items-center justify-center pt-32 pb-20 px-4 text-center">
@@ -86,6 +88,8 @@ export default function App() {
   return (
     <ToastProvider>
       <Router>
+        <ScrollToTop />
+        <SEOHandler />
         <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-orange-100 selection:text-orange-900">
           <Navbar />
           <main className="flex-grow">

@@ -252,6 +252,79 @@ ${packagesContext}`;
     }
   });
 
+  // AI Generate Personalized Itinerary Endpoint
+  app.post("/api/ai/generate-personalized-itinerary", async (req, res) => {
+    const { 
+      packageName, 
+      packageType, 
+      duration, 
+      startDate, 
+      endDate, 
+      passengers = [], 
+      pace = "Balanced", 
+      interest = "Sightseeing", 
+      dietary = "Halal", 
+      travelingWithKids = false,
+      travelingWithElderly = false,
+      extraNotes = "" 
+    } = req.body;
+
+    if (!packageName) {
+      return res.status(400).json({ error: "Package name is required" });
+    }
+
+    try {
+      const passengerNames = passengers.map((p: any) => p.name).join(", ");
+      const passengerCount = passengers.length;
+      
+      const promptText = `Generate a high-quality, highly personalized day-by-day travel itinerary for a booked tour package.
+      
+      TRIP DETAILS:
+      - Package Name: ${packageName}
+      - Category/Type: ${packageType}
+      - Duration: ${duration}
+      - Planned Travel Dates: ${startDate ? `${startDate} to ${endDate || 'N/A'}` : 'Not specified'}
+      - Passengers: ${passengerCount} traveler(s) (${passengerNames || 'Guest Traveler(s)'})
+      
+      PERSONALIZATION PREFERENCES:
+      - Pace of Travel: ${pace} (e.g., Relaxed means fewer activities, plenty of rest; Intense means action-packed)
+      - Primary Focus/Interest: ${interest} (tailor daytime activities to this preference)
+      - Dietary Requirements: ${dietary} (provide dining/food recommendations matching this, e.g., suggesting specific cuisines or vegetarian spots)
+      - Traveling with Kids: ${travelingWithKids ? "Yes" : "No"} (if yes, include kid-friendly activities, playgrounds, and stroller-friendly spots)
+      - Traveling with Elderly: ${travelingWithElderly ? "Yes" : "No"} (if yes, prioritize accessibility, minimal walking, wheelchair tips, and comfortable rest intervals)
+      - Special Requests/Notes: ${extraNotes || "None"}
+      
+      INSTRUCTIONS:
+      1. Formulate a personalized day-by-day travel itinerary for the given duration. If travel dates are specified, calculate and display the actual calendar dates for each day (e.g., "Day 1: October 15, 2026 - Arrival & Welcome").
+      2. For each day, divide activities into "Morning", "Afternoon", and "Evening" sections.
+      3. Tailor recommendations specifically to the travelers' profile. For example:
+         - If Umrah/Haj package, focus heavily on spiritual milestones, prayer timings, and sacred sites, combined with practical advice for kids/elderly if checked.
+         - If Study Abroad package, blend campus/academic preparation and city exploration with student budget tips.
+         - If EXPO/Corporate, include networking suggestions, trade-show navigation tips, and executive dining recommendations.
+      4. Include a dedicated section for:
+         - **Personalized Packing Essentials**: items tailored to their demographic (e.g., kids gear, elderly medication reminder, spiritual garments like Ihram, or business attire).
+         - **Local Culinary Tips**: recommendations aligning with their dietary preference (${dietary}).
+         - **Health & Comfort Safeguards**: tips on staying hydrated, navigating local transit, and managing the pace based on their profile.
+      5. Output ONLY clean, modern, professionally structured Markdown. Do not include any meta-introductions or conversational filler at the start. Go straight into the itinerary.`;
+
+      const response = await generateContentWithFallback({
+        model: "gemini-3.5-flash",
+        contents: [
+          {
+            parts: [
+              { text: promptText },
+            ],
+          },
+        ],
+      });
+
+      res.json({ success: true, text: response.text });
+    } catch (err: any) {
+      console.error("Backend Personalized Itinerary Error:", err);
+      res.status(500).json({ error: err.message || "Failed to generate personalized itinerary" });
+    }
+  });
+
   // AI Executive Insights Endpoint
   app.post("/api/ai/executive-insights", async (req, res) => {
     const { bookingsCount, totalRev, packagesCount, visasCount, categoriesBreakdown } = req.body;

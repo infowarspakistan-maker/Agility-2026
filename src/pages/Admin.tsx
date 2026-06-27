@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { auth, db, storage, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
-import { Booking, UserProfile, TravelPackage, PackageType, Review, VisaRequest, ChatMessage, ChatSession, HeroSlide } from '@/src/types';
+import { Booking, UserProfile, TravelPackage, PackageType, Review, VisaRequest, ChatMessage, ChatSession, HeroSlide, ExpoPass } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Filter, Database, Users, TrendingUp, Package, 
@@ -127,7 +127,7 @@ export default function Admin() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [editorTab, setEditorTab] = useState<'essential' | 'narrative' | 'media' | 'itinerary' | 'infocards'>('essential');
+  const [editorTab, setEditorTab] = useState<'essential' | 'narrative' | 'media' | 'itinerary' | 'infocards' | 'expopasses'>('essential');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Hero Slide Management State
@@ -2607,9 +2607,8 @@ export default function Admin() {
             </div>
           )}
         </motion.div>
-      </AnimatePresence>
-        </div>
-      </div>
+      
+                  
 
       {/* Package Editor Modal */}
       {isEditing && currentPackage && (
@@ -2629,8 +2628,10 @@ export default function Admin() {
                   className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:text-rose-500 transition-colors"
                  >
                    <XCircle size={24} />
-                 </button>
-                           {/* Modular Premium Tab Bar */}
+                  </button>
+               </div>
+
+                                              {/* Modular Premium Tab Bar */}
                <div className="px-10 py-4 bg-slate-50 border-b border-slate-100 flex gap-2 overflow-x-auto scrollbar-none">
                  {[
                    { id: 'essential', label: 'Core Specs', icon: <Tag size={14} /> },
@@ -2638,6 +2639,7 @@ export default function Admin() {
                    { id: 'media', label: 'Media Gallery', icon: <ImageIcon size={14} /> },
                    { id: 'itinerary', label: 'Itinerary List', icon: <MapPin size={14} /> },
                    { id: 'infocards', label: 'Terms & Rules', icon: <Layers size={14} /> },
+                   ...(currentPackage.type === 'expo' ? [{ id: 'expopasses', label: 'Expo Passes & Cards', icon: <Sparkles size={14} /> }] : [])
                  ].map((tab) => (
                    <button
                      key={tab.id}
@@ -3140,8 +3142,253 @@ export default function Admin() {
                         </div>
                      </motion.div>
                    )}
-                 </AnimatePresence>
-               </div>    </div>
+                 
+
+                    {editorTab === 'expopasses' && currentPackage && currentPackage.type === 'expo' && (
+                      <motion.div
+                        key="expopasses"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-6"
+                      >
+                        <div className="space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                                 <Sparkles size={12} className="mr-2 text-orange-500" />
+                                 Custom Expo Passes & Entrance Cards
+                              </label>
+                              <p className="text-xs text-slate-400 font-medium">Create distinct pass tiers (e.g. Exhibitor Pass, Visitor Card, VIP Delegate) for attendees.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newPasses = [...(currentPackage.expoPasses || [])];
+                                newPasses.push({
+                                  id: Math.random().toString(36).substring(2, 9),
+                                  title: '',
+                                  price: 0,
+                                  currency: currentPackage.currency || 'PKR',
+                                  description: '',
+                                  badgeColor: 'orange',
+                                  features: []
+                                });
+                                setCurrentPackage({ ...currentPackage, expoPasses: newPasses });
+                              }}
+                              className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-orange-500 transition-all flex items-center gap-1.5 shadow-sm shrink-0 self-start sm:self-center cursor-pointer"
+                            >
+                              <Plus size={12} />
+                              <span>Create Pass Card</span>
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {(currentPackage.expoPasses || []).map((pass, idx) => (
+                              <div 
+                                key={pass.id || idx} 
+                                className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden relative group hover:border-slate-200 transition-all flex flex-col justify-between"
+                              >
+                                {/* Header Color Stripe depending on badgeColor */}
+                                <div className={cn(
+                                  "h-2 w-full",
+                                  pass.badgeColor === 'orange' ? 'bg-orange-500' :
+                                  pass.badgeColor === 'emerald' ? 'bg-emerald-500' :
+                                  pass.badgeColor === 'sky' ? 'bg-sky-500' :
+                                  pass.badgeColor === 'purple' ? 'bg-purple-500' :
+                                  pass.badgeColor === 'amber' ? 'bg-amber-500' :
+                                  pass.badgeColor === 'rose' ? 'bg-rose-500' :
+                                  pass.badgeColor === 'indigo' ? 'bg-indigo-500' :
+                                  'bg-slate-500'
+                                )} />
+
+                                <div className="p-6 space-y-4 flex-grow">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pass Specification</span>
+                                    <button 
+                                      type="button"
+                                      onClick={() => {
+                                        const newPasses = [...(currentPackage.expoPasses || [])];
+                                        newPasses.splice(idx, 1);
+                                        setCurrentPackage({ ...currentPackage, expoPasses: newPasses });
+                                      }}
+                                      className="text-slate-400 hover:text-rose-500 transition-colors p-1"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 gap-3">
+                                    <div className="space-y-1">
+                                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Pass Title</label>
+                                      <input 
+                                        type="text"
+                                        className="w-full bg-slate-50 border border-slate-100/80 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-none"
+                                        placeholder="e.g. Premium VIP Delegate Pass"
+                                        value={pass.title}
+                                        onChange={(e) => {
+                                          const newPasses = [...(currentPackage.expoPasses || [])];
+                                          newPasses[idx].title = e.target.value;
+                                          setCurrentPackage({ ...currentPackage, expoPasses: newPasses });
+                                        }}
+                                      />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Pass Price</label>
+                                        <input 
+                                          type="number"
+                                          className="w-full bg-slate-50 border border-slate-100/80 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-none"
+                                          placeholder="0 (or Add-on Price)"
+                                          value={pass.price}
+                                          onChange={(e) => {
+                                            const newPasses = [...(currentPackage.expoPasses || [])];
+                                            newPasses[idx].price = Number(e.target.value);
+                                            setCurrentPackage({ ...currentPackage, expoPasses: newPasses });
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Badge Theme</label>
+                                        <select 
+                                          className="w-full bg-slate-50 border border-slate-100/80 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-none"
+                                          value={pass.badgeColor || 'orange'}
+                                          onChange={(e) => {
+                                            const newPasses = [...(currentPackage.expoPasses || [])];
+                                            newPasses[idx].badgeColor = e.target.value as any;
+                                            setCurrentPackage({ ...currentPackage, expoPasses: newPasses });
+                                          }}
+                                        >
+                                          <option value="orange">Orange Accent</option>
+                                          <option value="emerald">Emerald Success</option>
+                                          <option value="sky">Sky Info</option>
+                                          <option value="purple">Purple Creative</option>
+                                          <option value="amber">Amber Warm</option>
+                                          <option value="rose">Rose Premium</option>
+                                          <option value="indigo">Indigo Tech</option>
+                                          <option value="slate">Slate Basic</option>
+                                        </select>
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Pass Description / Benefits</label>
+                                      <textarea 
+                                        rows={2}
+                                        className="w-full bg-slate-50 border border-slate-100/80 rounded-xl px-4 py-2 text-xs outline-none focus:border-orange-500 focus:bg-white transition-all resize-none shadow-none leading-relaxed"
+                                        placeholder="Full conference access, lounge access, delegate welcome kit..."
+                                        value={pass.description}
+                                        onChange={(e) => {
+                                          const newPasses = [...(currentPackage.expoPasses || [])];
+                                          newPasses[idx].description = e.target.value;
+                                          setCurrentPackage({ ...currentPackage, expoPasses: newPasses });
+                                        }}
+                                      />
+                                    </div>
+
+                                    <div className="space-y-1">
+                                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+                                        <span>Key Features / Benefits (One per line)</span>
+                                      </label>
+                                      <textarea 
+                                        rows={3}
+                                        className="w-full bg-slate-50 border border-slate-100/80 rounded-xl px-4 py-2 text-[11px] font-mono outline-none focus:border-orange-500 focus:bg-white transition-all resize-none shadow-none leading-relaxed"
+                                        placeholder="Main Hall access&#10;B2B Networking lounge&#10;Lunch & refreshments included"
+                                        value={pass.features?.join('\n') || ''}
+                                        onChange={(e) => {
+                                          const newPasses = [...(currentPackage.expoPasses || [])];
+                                          newPasses[idx].features = e.target.value.split('\n').filter(line => line.trim() !== '');
+                                          setCurrentPackage({ ...currentPackage, expoPasses: newPasses });
+                                        }}
+                                      />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 mt-1">
+                                      <div className="space-y-1">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total slots</label>
+                                        <input 
+                                          type="number"
+                                          className="w-full bg-slate-50 border border-slate-100/80 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-none"
+                                          placeholder="e.g. 50"
+                                          value={pass.slotsTotal || ''}
+                                          onChange={(e) => {
+                                            const newPasses = [...(currentPackage.expoPasses || [])];
+                                            newPasses[idx].slotsTotal = e.target.value ? Number(e.target.value) : undefined;
+                                            setCurrentPackage({ ...currentPackage, expoPasses: newPasses });
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Available left</label>
+                                        <input 
+                                          type="number"
+                                          className="w-full bg-slate-50 border border-slate-100/80 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-none"
+                                          placeholder="e.g. 45"
+                                          value={pass.slotsAvailable || ''}
+                                          onChange={(e) => {
+                                            const newPasses = [...(currentPackage.expoPasses || [])];
+                                            newPasses[idx].slotsAvailable = e.target.value ? Number(e.target.value) : undefined;
+                                            setCurrentPackage({ ...currentPackage, expoPasses: newPasses });
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {(currentPackage.expoPasses || []).length === 0 && (
+                            <div className="py-12 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-center space-y-3 bg-slate-50/50">
+                              <Sparkles className="text-slate-300 w-12 h-12 stroke-[1.5]" />
+                              <div className="space-y-1">
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">No Passes Created Yet</h3>
+                                <p className="text-xs text-slate-400 max-w-sm">Define multiple exclusive passes, badges, or visitor invitation cards for this Expo catalog entry to show off professional ticket options.</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newPasses = [
+                                    {
+                                      id: Math.random().toString(36).substring(2, 9),
+                                      title: 'Standard Visitor Pass',
+                                      price: 0,
+                                      currency: currentPackage.currency || 'PKR',
+                                      description: 'Grants access to main halls, keynote presentations, and exhibition zones.',
+                                      badgeColor: 'sky' as const,
+                                      features: ['Access to all 4 halls', 'Keynote audio headsets', 'Standard booklet guide'],
+                                      slotsTotal: 100,
+                                      slotsAvailable: 100
+                                    },
+                                    {
+                                      id: Math.random().toString(36).substring(2, 9),
+                                      title: 'Exhibitor Gold Card',
+                                      price: 15000,
+                                      currency: currentPackage.currency || 'PKR',
+                                      description: 'For corporate delegates representing companies. Includes raw booth space benefits and custom presentation slots.',
+                                      badgeColor: 'orange' as const,
+                                      features: ['Standard 3x3 booth space', '2 x Delegated gold badges', 'Company feature in catalog', 'Exclusive VIP lounge lunches'],
+                                      slotsTotal: 25,
+                                      slotsAvailable: 25
+                                    }
+                                  ];
+                                  setCurrentPackage({ ...currentPackage, expoPasses: newPasses });
+                                }}
+                                className="px-5 py-2.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 transition-all shadow-md shadow-slate-900/10 cursor-pointer"
+                              >
+                                Generate Standard Demo Pass Tiers
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+</AnimatePresence>
+               </div>
+
+                    
 
               <div className="p-10 bg-slate-50 flex justify-between items-center border-t border-slate-100">
                  <div className="flex items-center space-x-3 text-slate-400">

@@ -1,5 +1,17 @@
 export type PackageType = 'umrah' | 'haj' | 'visa' | 'domestic-group' | 'domestic-private' | 'expo' | 'study-abroad' | 'corporate';
 
+export interface ExpoPass {
+  id: string;
+  title: string;
+  price: number;
+  currency: string;
+  description: string;
+  badgeColor?: 'slate' | 'orange' | 'emerald' | 'sky' | 'purple' | 'amber' | 'rose' | 'indigo';
+  features?: string[];
+  slotsTotal?: number;
+  slotsAvailable?: number;
+}
+
 export interface TravelPackage {
   id: string;
   title: string;
@@ -12,6 +24,7 @@ export interface TravelPackage {
   itinerary: string | string[];
   itineraryDetails?: { title: string; description: string }[];
   additionalInfo?: { title: string; description: string }[];
+  expoPasses?: ExpoPass[];
   images: string[];
   inventoryCount: number;
   locations?: string;

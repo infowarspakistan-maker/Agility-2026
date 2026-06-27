@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db, auth } from '@/src/lib/firebase';
 import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
-import { TravelPackage, Booking, Passenger } from '@/src/types';
+import { TravelPackage, Booking, Passenger, ExpoPass } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar, FileText, Download, Info } from 'lucide-react';
 import { cn, formatCurrency, optimizeImageUrl, compressImage, ensureItineraryArray } from '@/src/lib/utils';
@@ -193,10 +193,10 @@ export default function PackageDetails() {
       
       doc.setFont('Helvetica', 'normal');
       doc.setFontSize(9);
-      doc.text(`Method: ${paymentMethod === 'bank' ? 'Bank Transfer' : 'Credit/Debit Card'}`, 20, yOffset + 13);
+      doc.text(`Method: ${paymentMethod === 'bank' ? 'Bank Transfer' : 'Credit/Debit Card'}${pkg.type === 'expo' && selectedExpoPass ? ` | Pass: ${selectedExpoPass.title}` : ''}`, 20, yOffset + 13);
       
       // Total amount
-      const totalAmt = pkg.price * passengers.length;
+      const totalAmt = (pkg.price + (pkg.type === 'expo' && selectedExpoPass ? selectedExpoPass.price : 0)) * passengers.length;
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(12);
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -303,6 +303,7 @@ export default function PackageDetails() {
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [selectedExpoPass, setSelectedExpoPass] = useState<ExpoPass | null>(null);
   
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatusText, setUploadStatusText] = useState('');
@@ -323,6 +324,9 @@ export default function PackageDetails() {
   useEffect(() => {
     if (pkg) {
       document.title = `${pkg.title} | Agility Travels`;
+      if (pkg.type === 'expo' && pkg.expoPasses && pkg.expoPasses.length > 0 && !selectedExpoPass) {
+        setSelectedExpoPass(pkg.expoPasses[0]);
+      }
       
       const description = `Discover our premium ${pkg.title} package. Duration: ${pkg.duration}, Category: ${pkg.category}. Starting at ${pkg.price} ${pkg.currency}. View inclusions and full daily itineraries.`;
       
@@ -545,7 +549,7 @@ export default function PackageDetails() {
         }
       }
 
-      const bookingData: Omit<Booking, 'id'> = {
+      const bookingData: any = {
         userId: auth.currentUser.uid,
         packageId: pkg.id,
         packageName: pkg.title,
@@ -553,7 +557,7 @@ export default function PackageDetails() {
         status: 'pending',
         paymentStatus: 'unpaid',
         paymentMethod: paymentMethod,
-        totalAmount: pkg.price * passengers.length,
+        totalAmount: (pkg.price + (pkg.type === 'expo' && selectedExpoPass ? selectedExpoPass.price : 0)) * passengers.length,
         amountPaid: 0,
         bookingDate: new Date().toISOString(),
         passengers: passengers,
@@ -563,9 +567,11 @@ export default function PackageDetails() {
         contactAddress: contactInfo.address,
         passportUrl: passportUrl || undefined,
         idCardUrl: idCardUrl || undefined,
-        notes: driveFileIds.length > 0 ? `Uploaded ${driveFileIds.length} document(s) to Google Drive.` : '',
+        notes: (driveFileIds.length > 0 ? `Uploaded ${driveFileIds.length} document(s) to Google Drive. ` : '') + 
+               (pkg.type === 'expo' && selectedExpoPass ? `Selected Pass: ${selectedExpoPass.title} (+${formatCurrency(selectedExpoPass.price)}).` : ''),
         preferredStartDate: startDate ? startDate.toISOString().split('T')[0] : '',
         preferredEndDate: endDate ? endDate.toISOString().split('T')[0] : '',
+        ...(pkg.type === 'expo' && selectedExpoPass ? { selectedExpoPassTitle: selectedExpoPass.title, selectedExpoPassPrice: selectedExpoPass.price } : {}),
       };
 
       const docRef = await addDoc(collection(db, 'bookings'), bookingData);
@@ -604,7 +610,7 @@ export default function PackageDetails() {
   if (loading) return <div className="pt-32 text-center">Loading package...</div>;
   if (!pkg) return <div className="pt-32 text-center text-red-500 font-bold">Package not found.</div>;
 
-  const totalAmount = pkg.price * passengers.length;
+  const totalAmount = (pkg.price + (pkg.type === 'expo' && selectedExpoPass ? selectedExpoPass.price : 0)) * passengers.length;
 
   return (
     <div className="pt-32 pb-20 px-4 max-w-7xl mx-auto">
@@ -819,6 +825,128 @@ export default function PackageDetails() {
                                   </div>
                                 </div>
                               </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Expo Passes Tiers */}
+                    {pkg.type === 'expo' && pkg.expoPasses && pkg.expoPasses.length > 0 && (
+                      <div className="mb-10">
+                        <h3 className="text-2xl font-black text-slate-950 mb-6 tracking-tight flex items-center gap-2">
+                          <CreditCard className="text-orange-500 w-5 h-5" />
+                          <span>Choose Your Delegated Badge / Entry Pass Tier</span>
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium -mt-4 mb-6 leading-relaxed">
+                          This exhibition requires an entry ticket. Click on a pass below to select it for your booking. The selected tier's price is calculated per delegate.
+                        </p>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {pkg.expoPasses.map((pass, idx) => {
+                            const isSelected = selectedExpoPass?.id === pass.id;
+                            
+                            // Colors map
+                            const themeColors = 
+                              pass.badgeColor === 'emerald' ? { bg: 'bg-emerald-50/50', border: 'border-emerald-200', text: 'text-emerald-700', stripe: 'bg-emerald-500', accent: 'emerald' } :
+                              pass.badgeColor === 'sky' ? { bg: 'bg-sky-50/50', border: 'border-sky-200', text: 'text-sky-700', stripe: 'bg-sky-500', accent: 'sky' } :
+                              pass.badgeColor === 'purple' ? { bg: 'bg-purple-50/50', border: 'border-purple-200', text: 'text-purple-700', stripe: 'bg-purple-500', accent: 'purple' } :
+                              pass.badgeColor === 'amber' ? { bg: 'bg-amber-50/50', border: 'border-amber-200', text: 'text-amber-700', stripe: 'bg-amber-500', accent: 'amber' } :
+                              pass.badgeColor === 'rose' ? { bg: 'bg-rose-50/50', border: 'border-rose-200', text: 'text-rose-700', stripe: 'bg-rose-500', accent: 'rose' } :
+                              pass.badgeColor === 'indigo' ? { bg: 'bg-indigo-50/50', border: 'border-indigo-200', text: 'text-indigo-700', stripe: 'bg-indigo-500', accent: 'indigo' } :
+                              pass.badgeColor === 'orange' ? { bg: 'bg-orange-50/50', border: 'border-orange-200', text: 'text-orange-700', stripe: 'bg-orange-500', accent: 'orange' } :
+                              { bg: 'bg-slate-50/50', border: 'border-slate-200', text: 'text-slate-700', stripe: 'bg-slate-500', accent: 'slate' };
+
+                            return (
+                              <button
+                                type="button"
+                                key={pass.id || idx}
+                                onClick={() => setSelectedExpoPass(pass)}
+                                className={cn(
+                                  "w-full text-left rounded-[2rem] border overflow-hidden transition-all duration-300 relative flex flex-col justify-between cursor-pointer group bg-white shadow-[0_4px_25px_rgba(0,0,0,0.01)]",
+                                  isSelected 
+                                    ? "border-orange-500 ring-4 ring-orange-500/10 scale-[1.01]" 
+                                    : "border-slate-100 hover:border-slate-200 hover:shadow-[0_15px_45px_rgba(0,0,0,0.04)]"
+                                )}
+                              >
+                                {/* Header Stripe */}
+                                <div className={cn("h-3 w-full", themeColors.stripe)} />
+                                
+                                <div className="p-8 flex-grow flex flex-col justify-between">
+                                  <div className="space-y-4 flex-grow">
+                                    <div className="flex justify-between items-start gap-2">
+                                      <div>
+                                        <span className={cn("text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border", themeColors.text, themeColors.bg, themeColors.border)}>
+                                          {pass.badgeColor || 'Pass'}
+                                        </span>
+                                        <h4 className="font-black text-slate-950 text-base mt-2 tracking-tight group-hover:text-orange-500 transition-colors leading-tight">{pass.title}</h4>
+                                      </div>
+                                      
+                                      <div className="text-right shrink-0">
+                                        <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Pass price</span>
+                                        <span className="font-extrabold text-slate-900 text-sm">
+                                          {pass.price === 0 ? "Free / Incl." : `+ ${formatCurrency(pass.price)}`}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    
+                                    <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                                      {pass.description}
+                                    </p>
+                                    
+                                    {/* Perforated ticket-like line divider */}
+                                    <div className="relative my-4 border-t border-dashed border-slate-100 py-1">
+                                      <div className="absolute -left-10 -top-[7px] w-4 h-3 rounded-full bg-slate-50 border-r border-slate-100" />
+                                      <div className="absolute -right-10 -top-[7px] w-4 h-3 rounded-full bg-slate-50 border-l border-slate-100" />
+                                    </div>
+                                    
+                                    {/* Benefits list */}
+                                    {pass.features && pass.features.length > 0 && (
+                                      <div className="space-y-2">
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Included Privileges:</span>
+                                        <div className="space-y-1.5">
+                                          {pass.features.map((feat, fIdx) => (
+                                            <div key={fIdx} className="flex items-center text-[10px] text-slate-600 font-bold gap-2">
+                                              <CheckCircle2 size={12} className={cn("shrink-0", isSelected ? "text-orange-500" : "text-slate-400")} />
+                                              <span>{feat}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-50">
+                                    {/* Availability check */}
+                                    {pass.slotsAvailable !== undefined && pass.slotsTotal !== undefined ? (
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="relative flex h-2 w-2">
+                                          <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", pass.slotsAvailable < 10 ? "bg-rose-400" : "bg-emerald-400")}></span>
+                                          <span className={cn("relative inline-flex rounded-full h-2 w-2", pass.slotsAvailable < 10 ? "bg-rose-500" : "bg-emerald-500")}></span>
+                                        </span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                          {pass.slotsAvailable <= 0 ? "Fully Booked" : `${pass.slotsAvailable} / ${pass.slotsTotal} Left`}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                        <Users size={12} />
+                                        <span>Unlimited Access</span>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Selection badge */}
+                                    <div className={cn(
+                                      "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all",
+                                      isSelected 
+                                        ? "bg-orange-500 text-white shadow-sm shadow-orange-500/20" 
+                                        : "bg-slate-100 text-slate-400 group-hover:bg-orange-50 group-hover:text-orange-500"
+                                    )}>
+                                      {isSelected ? "Selected Pass" : "Select Pass"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
                             );
                           })}
                         </div>

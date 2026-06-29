@@ -2822,6 +2822,34 @@ export default function Admin() {
                                </div>
                             </div>
 
+                            {currentPackage.type === 'study-abroad' && (
+                              <div className="space-y-4 bg-orange-50 p-6 rounded-3xl border border-orange-100/50">
+                                 <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-900 mb-2">Primary Program Support Focus</h4>
+                                 <p className="text-xs text-orange-700/80 mb-4">Select the main support category for this study abroad package.</p>
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                   {['University Admission', 'Program Selection Support', 'Obtaining Visa & Permits', 'Arrival & Community'].map(focus => (
+                                     <label key={focus} className="flex items-center space-x-3 cursor-pointer group">
+                                       <div className={cn(
+                                         "w-5 h-5 rounded-full border flex items-center justify-center transition-colors",
+                                         currentPackage.programFocus === focus ? "bg-orange-500 border-orange-500" : "bg-white border-orange-200 group-hover:border-orange-400"
+                                       )}>
+                                         {currentPackage.programFocus === focus && <div className="w-2 h-2 rounded-full bg-white" />}
+                                       </div>
+                                       <span className="text-xs font-bold text-slate-700">{focus}</span>
+                                       <input 
+                                         type="radio"
+                                         name="programFocus"
+                                         className="hidden"
+                                         value={focus}
+                                         checked={currentPackage.programFocus === focus}
+                                         onChange={() => setCurrentPackage({ ...currentPackage, programFocus: focus })}
+                                       />
+                                     </label>
+                                   ))}
+                                 </div>
+                              </div>
+                            )}
+
                             <div className="space-y-4 bg-slate-50 p-6 rounded-3xl border border-slate-100/50">
                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-900 mb-2">Visibility Settings</h4>
                                <div className="space-y-4">

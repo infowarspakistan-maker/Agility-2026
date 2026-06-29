@@ -25,6 +25,7 @@ export interface TravelPackage {
   itineraryDetails?: { title: string; description: string }[];
   additionalInfo?: { title: string; description: string }[];
   includedServices?: string[];
+  programFocus?: string;
   expoPasses?: ExpoPass[];
   images: string[];
   inventoryCount: number;

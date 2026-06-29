@@ -752,6 +752,16 @@ export default function PackageDetails() {
                     <h3 className="text-2xl font-bold mb-4">About this package</h3>
                     <p className="text-slate-600 leading-relaxed mb-6">{pkg.description}</p>
                     
+                    {pkg.programFocus && (
+                      <div className="mb-8">
+                        <h3 className="text-2xl font-bold mb-4">Program Focus</h3>
+                        <div className="flex items-center space-x-3 bg-orange-50 text-orange-700 px-5 py-4 rounded-2xl font-bold border border-orange-100 w-fit">
+                          <CheckCircle2 size={20} className="text-orange-500" />
+                          <span>{pkg.programFocus}</span>
+                        </div>
+                      </div>
+                    )}
+                    
                     {pkg.includedServices && pkg.includedServices.length > 0 && (
                       <div className="mb-8">
                         <h3 className="text-2xl font-bold mb-4">Included Services</h3>

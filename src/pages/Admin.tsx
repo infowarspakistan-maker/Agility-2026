@@ -2607,6 +2607,7 @@ export default function Admin() {
             </div>
           )}
         </motion.div>
+      </AnimatePresence>
       
                   
 
@@ -3820,6 +3821,8 @@ export default function Admin() {
           </div>
         )}
       </AnimatePresence>
+    </div>
+    </div>
     </div>
   );
 }

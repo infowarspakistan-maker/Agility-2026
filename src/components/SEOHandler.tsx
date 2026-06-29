@@ -3,58 +3,58 @@ import { useLocation } from 'react-router-dom';
 
 const ROUTE_SEO_MAP: Record<string, { title: string; description: string; keywords: string }> = {
   '/': {
-    title: 'Agility Travels | Premium Umrah, Haj, and Corporate Tour Packages',
-    description: 'Agility Travels offers customized, premium Umrah, Haj, Corporate Expo, and Adventure tour packages with fully integrated booking, reliable accommodations, and exceptional guidance.',
+    title: 'Agility Travels | Premium Umrah & Corporate Tours',
+    description: 'Book customized Umrah, Haj, and Expo tour packages with Agility Travels. Enjoy premium travel guidance today! Explore our packages now.',
     keywords: 'Umrah packages, Haj tour, Corporate Expo, adventure travel Pakistan, Agility Travels, premium pilgrimage, luxury travels Makkah Madinah'
   },
   '/packages/umrah': {
-    title: 'Premium Umrah Packages 2026/2027 | Agility Travels',
-    description: 'Book customized, luxury, or economy group Umrah packages with 4/5-star hotels near Haram, VIP land transfers, and full visa guidance. Experience absolute spiritual comfort.',
+    title: 'Premium Umrah Packages 2026 | Agility Travels',
+    description: 'Book luxury group Umrah packages with 5-star Haram hotels and VIP transfers. Experience true spiritual comfort. Secure your spot today!',
     keywords: 'Umrah 2026, premium Umrah packages, luxury Umrah, 5 star hotels Makkah Madinah, Umrah visa Pakistan'
   },
   '/packages/haj': {
-    title: 'Haj 2026 Packages | Official Pilgrim Services | Agility Travels',
-    description: 'Register and secure your Haj 2026 booking with Agility Travels. Certified pilgrimage guidance, premium air-conditioned tents in Mina/Arafat, and direct flights.',
+    title: 'Haj 2026 Packages & Pilgrim Guide | Agility Travels',
+    description: 'Register for VIP Haj 2026 booking with certified guidance and premium Mina tents. Start your spiritual journey with us. Book online now.',
     keywords: 'Haj 2026 registration, VIP Haj packages, Haj guides, government scheme Haj, private Haj package'
   },
   '/packages/domestic-group': {
-    title: 'Northern Pakistan Tours & Corporate Holidays | Agility Travels',
-    description: 'Explore Hunza Valley, Skardu, Fairy Meadows, and SWAT. Custom group adventures, family holiday trips, and private corporate retreat logistics.',
+    title: 'Northern Pakistan Tours & Retreats | Agility Travels',
+    description: 'Explore Skardu, Hunza, and SWAT with our custom group adventures and corporate retreats. Plan your unforgettable Pakistan holiday today!',
     keywords: 'Northern Pakistan tours, Hunza Skardu packages, family holiday Pakistan, corporate adventure travel'
   },
   '/packages/visa': {
-    title: 'Fast-Track Visa Services & Tourist Consultancy | Agility Travels',
-    description: 'Hassle-free tourist and religious visa handling for Saudi Arabia, Dubai, UK, USA, Schengen Europe, and Turkey. Safe documentation assistance.',
+    title: 'Fast-Track Visa Services & Consulting | Agility Travels',
+    description: 'Get fast-track visa processing for Saudi Arabia, UK, USA, and Europe. Enjoy hassle-free documentation support. Apply for your visa now!',
     keywords: 'Saudi tourist visa, Dubai e-visa, UK visa consultancy, USA visa documentation, Schengen visa services'
   },
   '/packages/expo': {
-    title: 'Global Corporate EXPO Packages & Business Tours | Agility Travels',
-    description: 'Seamless custom business travel for international corporate expos and trade shows. Hotel booking, flights, and trade show registration support.',
+    title: 'Global EXPO Packages & Business Tours | Agility Travels',
+    description: 'Seamless business travel for global corporate expos and trade shows. Secure your hotel, flight, and trade pass today. View our EXPO deals.',
     keywords: 'Corporate travel agency, international business tours, trade expo packages, Canton fair booking'
   },
   '/packages/study-abroad': {
-    title: 'Study Abroad Programs & Visa Counseling | Agility Travels',
-    description: 'Unlock premium educational consultants. Guidance for admissions and student visa processing in UK, USA, Australia, and Canada.',
+    title: 'Study Abroad Programs & Student Visas | Agility Travels',
+    description: 'Expert admission and student visa guidance for universities in the UK, USA, and Canada. Unlock your educational future. Consult us today!',
     keywords: 'Study abroad consultancy, student visa UK, study in Canada, university admissions counselor'
   },
   '/faq': {
-    title: 'FAQs & Pilgrim Travel Requirements Guide | Agility Travels',
-    description: 'Read the latest updates and answers on Umrah medical certifications, visa documents, payment options, and customized travel requests.',
+    title: 'FAQs & Pilgrim Travel Requirements | Agility Travels',
+    description: 'Find answers to your questions on Umrah requirements, visa documents, and payment options. Read our travel guide for a safe trip.',
     keywords: 'Umrah requirements, passport validity, tour payment terms, travel insurance, flight cancellation'
   },
   '/contact': {
-    title: 'Contact Agility Travels | 24/7 Guest Assistance Desk',
-    description: 'Have a question? Connect with our dedicated tour coordinators via WhatsApp, live chat, email, or telephone. Visit our primary offices for in-person consultation.',
+    title: 'Contact Agility Travels | 24/7 Support Assistance',
+    description: 'Have a travel question? Contact Agility Travels via WhatsApp, email, or phone. Let our experts plan your next tour. Get in touch today!',
     keywords: 'Agility Travels contact number, Lahore travel agent phone, WhatsApp travel help, booking address'
   },
   '/login': {
-    title: 'Traveler Portal Sign-In | Agility Travels',
-    description: 'Access your luxury booking orders, real-time live chat transcripts, passenger passport details, and custom travel itineraries.',
+    title: 'Traveler Portal Sign-In & Dashboard | Agility Travels',
+    description: 'Access your Agility Travels booking orders, chat transcripts, and custom itineraries securely. Sign in to your traveler portal now!',
     keywords: 'Agility login, traveler portal, check booking status, upload passport'
   },
   '/profile': {
     title: 'My Profile & Bookings Dashboard | Agility Travels',
-    description: 'Manage your active reservations, passenger rosters, billing invoices, and communication history in one secure place.',
+    description: 'Manage your active tour reservations, billing invoices, and passport information securely. Review your travel communication history now.',
     keywords: 'my travels dashboard, user booking record, update passport information'
   }
 };

@@ -24,6 +24,7 @@ export interface TravelPackage {
   itinerary: string | string[];
   itineraryDetails?: { title: string; description: string }[];
   additionalInfo?: { title: string; description: string }[];
+  includedServices?: string[];
   expoPasses?: ExpoPass[];
   images: string[];
   inventoryCount: number;
@@ -41,6 +42,7 @@ export interface UserProfile {
   address?: string;
   passportCopyUrl?: string;
   idCardUrl?: string;
+  educationDegreeUrl?: string;
   createdAt: string;
 }
 
@@ -86,6 +88,7 @@ export interface Booking {
   notes?: string;
   passportUrl?: string;
   idCardUrl?: string;
+  educationDegreeUrl?: string;
   preferredStartDate?: string;
   preferredEndDate?: string;
 }

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db, auth } from '@/src/lib/firebase';
 import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/src/lib/firebase';
 import { TravelPackage, Booking, Passenger, ExpoPass } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar, FileText, Download, Info } from 'lucide-react';
@@ -301,6 +303,7 @@ export default function PackageDetails() {
   const [paymentMethod, setPaymentMethod] = useState('bank');
   const [passportFile, setPassportFile] = useState<File | null>(null);
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
+  const [educationDegreeFile, setEducationDegreeFile] = useState<File | null>(null);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [selectedExpoPass, setSelectedExpoPass] = useState<ExpoPass | null>(null);
@@ -324,11 +327,11 @@ export default function PackageDetails() {
   useEffect(() => {
     if (pkg) {
       document.title = `${pkg.title} | Agility Travels`;
-      if (pkg.type === 'expo' && pkg.expoPasses && pkg.expoPasses.length > 0 && !selectedExpoPass) {
+      if (pkg.expoPasses && pkg.expoPasses.length > 0 && !selectedExpoPass) {
         setSelectedExpoPass(pkg.expoPasses[0]);
       }
       
-      const description = `Discover our premium ${pkg.title} package. Duration: ${pkg.duration}, Category: ${pkg.category}. Starting at ${pkg.price} ${pkg.currency}. View inclusions and full daily itineraries.`;
+      const description = `Discover our premium ${pkg.title} package. Duration: ${pkg.duration}. Starting at ${pkg.price} ${pkg.currency}. View daily itineraries and book your spot today!`;
       
       const descMeta = document.querySelector('meta[name="description"]');
       if (descMeta) {
@@ -500,28 +503,50 @@ export default function PackageDetails() {
       let driveFileIds: string[] = [];
       let passportUrl = '';
       let idCardUrl = '';
+      let educationDegreeUrl = '';
       const filesToUpload: File[] = [];
       if (passportFile) filesToUpload.push(passportFile);
       if (idCardFile) filesToUpload.push(idCardFile);
+      if (educationDegreeFile) filesToUpload.push(educationDegreeFile);
 
-      // 1. Upload to our Express server backend (Guaranteed & fast)
+      const userId = auth.currentUser.uid;
+
       if (passportFile) {
         setUploadProgress(10);
-        setUploadStatusText("Uploading Passport Copy to server...");
+        setUploadStatusText("Uploading Passport Copy...");
         try {
-          passportUrl = await uploadFileToBackend(passportFile);
+          const storageRef = ref(storage, `clients/${userId}/documents/passport-${Date.now()}`);
+          const snapshot = await uploadBytes(storageRef, passportFile);
+          passportUrl = await getDownloadURL(snapshot.ref);
         } catch (err) {
-          console.error("Failed to upload passport to server:", err);
+          console.warn("Firebase Storage failed for passport, trying fallback:", err);
+          passportUrl = await uploadFileToBackend(passportFile).catch(() => '');
         }
       }
 
       if (idCardFile) {
-        setUploadProgress(40);
-        setUploadStatusText("Uploading ID Card Copy to server...");
+        setUploadProgress(30);
+        setUploadStatusText("Uploading ID Card Copy...");
         try {
-          idCardUrl = await uploadFileToBackend(idCardFile);
+          const storageRef = ref(storage, `clients/${userId}/documents/idcard-${Date.now()}`);
+          const snapshot = await uploadBytes(storageRef, idCardFile);
+          idCardUrl = await getDownloadURL(snapshot.ref);
         } catch (err) {
-          console.error("Failed to upload ID card to server:", err);
+          console.warn("Firebase Storage failed for ID card, trying fallback:", err);
+          idCardUrl = await uploadFileToBackend(idCardFile).catch(() => '');
+        }
+      }
+
+      if (educationDegreeFile) {
+        setUploadProgress(45);
+        setUploadStatusText("Uploading Education Degree...");
+        try {
+          const storageRef = ref(storage, `clients/${userId}/documents/education_degree-${Date.now()}`);
+          const snapshot = await uploadBytes(storageRef, educationDegreeFile);
+          educationDegreeUrl = await getDownloadURL(snapshot.ref);
+        } catch (err) {
+          console.warn("Firebase Storage failed for education degree, trying fallback:", err);
+          educationDegreeUrl = await uploadFileToBackend(educationDegreeFile).catch(() => '');
         }
       }
 
@@ -567,6 +592,7 @@ export default function PackageDetails() {
         contactAddress: contactInfo.address,
         passportUrl: passportUrl || undefined,
         idCardUrl: idCardUrl || undefined,
+        educationDegreeUrl: educationDegreeUrl || undefined,
         notes: (driveFileIds.length > 0 ? `Uploaded ${driveFileIds.length} document(s) to Google Drive. ` : '') + 
                (pkg.type === 'expo' && selectedExpoPass ? `Selected Pass: ${selectedExpoPass.title} (+${formatCurrency(selectedExpoPass.price)}).` : ''),
         preferredStartDate: startDate ? startDate.toISOString().split('T')[0] : '',
@@ -726,6 +752,20 @@ export default function PackageDetails() {
                     <h3 className="text-2xl font-bold mb-4">About this package</h3>
                     <p className="text-slate-600 leading-relaxed mb-6">{pkg.description}</p>
                     
+                    {pkg.includedServices && pkg.includedServices.length > 0 && (
+                      <div className="mb-8">
+                        <h3 className="text-2xl font-bold mb-4">Included Services</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {pkg.includedServices.map((service, idx) => (
+                            <div key={idx} className="flex items-center space-x-3 bg-emerald-50 text-emerald-700 px-4 py-3 rounded-2xl font-bold text-sm border border-emerald-100">
+                              <CheckCircle2 size={18} className="text-emerald-500" />
+                              <span>{service}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
                     {pkg.itineraryDetails && pkg.itineraryDetails.length > 0 ? (
                       <div className="mb-8">
                         <h3 className="text-2xl font-bold mb-4">Detailed Itinerary</h3>
@@ -831,15 +871,15 @@ export default function PackageDetails() {
                       </div>
                     )}
 
-                    {/* Expo Passes Tiers */}
-                    {pkg.type === 'expo' && pkg.expoPasses && pkg.expoPasses.length > 0 && (
+                    {/* Tiers & Passes */}
+                    {pkg.expoPasses && pkg.expoPasses.length > 0 && (
                       <div className="mb-10">
                         <h3 className="text-2xl font-black text-slate-950 mb-6 tracking-tight flex items-center gap-2">
                           <CreditCard className="text-orange-500 w-5 h-5" />
-                          <span>Choose Your Delegated Badge / Entry Pass Tier</span>
+                          <span>Choose Your Package Tier / Pass</span>
                         </h3>
                         <p className="text-xs text-slate-500 font-medium -mt-4 mb-6 leading-relaxed">
-                          This exhibition requires an entry ticket. Click on a pass below to select it for your booking. The selected tier's price is calculated per delegate.
+                          Click on an option below to select the tier that best suits your needs. The selected tier's price is calculated per delegate.
                         </p>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1251,7 +1291,7 @@ export default function PackageDetails() {
                      </h4>
                      <p className="text-sm text-slate-500">Upload primary documents for this travel group. You can also add these later from your profile.</p>
                      
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div className={cn("grid grid-cols-1 gap-6", pkg.type === 'study-abroad' ? 'md:grid-cols-3' : 'md:grid-cols-2')}>
                         <div className="space-y-3">
                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Passport Copy</label>
                            <div 
@@ -1314,6 +1354,39 @@ export default function PackageDetails() {
                            </div>
                         </div>
                      </div>
+                     
+                     {pkg.type === 'study-abroad' && (
+                        <div className="space-y-3 mt-6">
+                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Education Degree</label>
+                           <div 
+                             className={cn(
+                               "relative w-full aspect-video rounded-3xl border-2 border-dashed flex flex-col items-center justify-center transition-all cursor-pointer",
+                               educationDegreeFile ? "border-emerald-500 bg-emerald-50" : "border-slate-200 hover:border-orange-500 bg-slate-50"
+                             )}
+                             onClick={() => document.getElementById('edu-up')?.click()}
+                           >
+                              {educationDegreeFile ? (
+                                <>
+                                  <CheckCircle2 size={32} className="text-emerald-500 mb-2" />
+                                  <p className="text-xs font-bold text-emerald-700">{educationDegreeFile.name}</p>
+                                  <p className="text-[10px] text-emerald-500 mt-1 uppercase font-bold">Document Locked</p>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload size={32} className="text-slate-300 mb-2" />
+                                  <p className="text-xs font-bold text-slate-400">Click to upload Education Degree</p>
+                                </>
+                              )}
+                              <input 
+                                id="edu-up" 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*,.pdf" 
+                                onChange={(e) => setEducationDegreeFile(e.target.files?.[0] || null)} 
+                              />
+                           </div>
+                        </div>
+                     )}
                   </div>
                </motion.div>
              )}

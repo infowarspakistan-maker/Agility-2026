@@ -29,7 +29,9 @@ import {
 } from '@/src/services/googleSheetsService';
 import { useToast } from '@/src/components/layout/ToastContext';
 
-type TabType = 'overview' | 'bookings' | 'packages' | 'users' | 'visas' | 'reviews' | 'chat' | 'sheets' | 'sliders';
+import SEOContentGenerator from '@/src/components/SEOContentGenerator';
+
+type TabType = 'overview' | 'bookings' | 'packages' | 'users' | 'visas' | 'reviews' | 'chat' | 'sheets' | 'sliders' | 'seo';
 
 export default function Admin() {
   const toast = useToast();
@@ -135,6 +137,7 @@ export default function Admin() {
   const [isEditingSlide, setIsEditingSlide] = useState(false);
   const [currentSlideItem, setCurrentSlideItem] = useState<Partial<HeroSlide> | null>(null);
   const [isUploadingSlideImage, setIsUploadingSlideImage] = useState(false);
+  const [viewingDocument, setViewingDocument] = useState<{ url: string, title: string } | null>(null);
 
   // Real-time synchronization
   useEffect(() => {
@@ -756,22 +759,27 @@ export default function Admin() {
     }
   };
 
-  const handleAdminDocUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'passport' | 'idCard') => {
+  const handleAdminDocUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'passport' | 'idCard' | 'educationDegree') => {
     const file = e.target.files?.[0];
     if (!file || !selectedBooking) return;
 
     setIsUploadingDoc(type);
     try {
-      const storageRef = ref(storage, `admin_overrides/${selectedBooking.id}-${type}-${Date.now()}`);
+      const storageRef = ref(storage, `clients/${selectedBooking.userId}/documents/${type}-${Date.now()}`);
       const snapshot = await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
       
-      const updateData = type === 'passport' ? { passportUrl: downloadURL } : { idCardUrl: downloadURL };
+      const updateData = type === 'passport' 
+        ? { passportUrl: downloadURL } 
+        : type === 'idCard' 
+          ? { idCardUrl: downloadURL }
+          : { educationDegreeUrl: downloadURL };
+          
       await updateDoc(doc(db, 'bookings', selectedBooking.id), updateData);
       
       setSelectedBooking({ ...selectedBooking, ...updateData });
       setBookings(bookings.map(b => b.id === selectedBooking.id ? { ...b, ...updateData } : b));
-      toast.success(`${type === 'passport' ? 'Passport' : 'ID Card'} updated successfully!`);
+      toast.success(`${type === 'passport' ? 'Passport' : type === 'idCard' ? 'ID Card' : 'Education Degree'} updated successfully!`);
     } catch (error) {
       console.error(error);
       toast.error('Failed to upload document');
@@ -996,7 +1004,8 @@ export default function Admin() {
             {activeCategory === 'intel' && [
               { id: 'overview', icon: BarChart3, label: 'Analytics Dashboard Overview' },
               { id: 'sheets', icon: FileText, label: 'Google Sheets Integration & Sync' },
-              { id: 'sliders', icon: ImageIcon, label: 'Hero Banners & Slides Manager' }
+              { id: 'sliders', icon: ImageIcon, label: 'Hero Banners & Slides Manager' },
+              { id: 'seo', icon: Sparkles, label: 'SEO Content AI' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -2606,6 +2615,10 @@ export default function Admin() {
               )}
             </div>
           )}
+
+          {activeTab === 'seo' && (
+            <SEOContentGenerator />
+          )}
         </motion.div>
       </AnimatePresence>
       
@@ -2621,8 +2634,8 @@ export default function Admin() {
            >
               <div className="p-10 border-b border-slate-50 flex justify-between items-center">
                  <div>
-                   <h3 className="text-2xl font-bold">{currentPackage.id ? 'Edit Specification' : 'New Catalog Entry'}</h3>
-                   <p className="text-sm text-slate-400 font-medium">Define metadata and commercial attributes.</p>
+                   <h3 className="text-2xl font-bold">{currentPackage.id ? 'Edit Package' : 'Create New Package'}</h3>
+                   <p className="text-sm text-slate-400 font-medium">Define package details, pricing, and itinerary.</p>
                  </div>
                  <button 
                   onClick={() => setIsEditing(false)}
@@ -2635,12 +2648,12 @@ export default function Admin() {
                                               {/* Modular Premium Tab Bar */}
                <div className="px-10 py-4 bg-slate-50 border-b border-slate-100 flex gap-2 overflow-x-auto scrollbar-none">
                  {[
-                   { id: 'essential', label: 'Core Specs', icon: <Tag size={14} /> },
-                   { id: 'narrative', label: 'Narrative', icon: <FileText size={14} /> },
-                   { id: 'media', label: 'Media Gallery', icon: <ImageIcon size={14} /> },
-                   { id: 'itinerary', label: 'Itinerary List', icon: <MapPin size={14} /> },
-                   { id: 'infocards', label: 'Terms & Rules', icon: <Layers size={14} /> },
-                   ...(currentPackage.type === 'expo' ? [{ id: 'expopasses', label: 'Expo Passes & Cards', icon: <Sparkles size={14} /> }] : [])
+                   { id: 'essential', label: 'Basic Details', icon: <Tag size={14} /> },
+                   { id: 'narrative', label: 'Description', icon: <FileText size={14} /> },
+                   { id: 'media', label: 'Images', icon: <ImageIcon size={14} /> },
+                   { id: 'itinerary', label: 'Itinerary', icon: <MapPin size={14} /> },
+                   { id: 'infocards', label: 'Policies', icon: <Layers size={14} /> },
+                   { id: 'expopasses', label: 'Tiers & Passes', icon: <Sparkles size={14} /> }
                  ].map((tab) => (
                    <button
                      key={tab.id}
@@ -2687,7 +2700,7 @@ export default function Admin() {
                             <div className="space-y-2">
                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                                   <Layers size={12} className="mr-2 text-orange-500" />
-                                  Package Classification
+                                  Package Type
                                </label>
                                <div className="relative">
                                  <select 
@@ -2713,7 +2726,7 @@ export default function Admin() {
                                <div className="space-y-2">
                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                                     <TrendingUp size={12} className="mr-2 text-orange-500" />
-                                    Pricing Block
+                                    Pricing
                                  </label>
                                  <div className="flex space-x-2">
                                    <select 
@@ -2756,7 +2769,7 @@ export default function Admin() {
                                <div className="space-y-2">
                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                                     <Tag size={12} className="mr-2 text-orange-500" />
-                                    Standard Tier
+                                    Package Tier
                                  </label>
                                  <input 
                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-orange-500 focus:bg-white transition-all shadow-sm"
@@ -2768,7 +2781,7 @@ export default function Admin() {
                                <div className="space-y-2">
                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                                     <Layers size={12} className="mr-2 text-orange-500" />
-                                    Global Inventory
+                                    Available Spots
                                  </label>
                                  <input 
                                    type="number"
@@ -2776,6 +2789,36 @@ export default function Admin() {
                                    value={currentPackage.inventoryCount || 0}
                                    onChange={(e) => setCurrentPackage({ ...currentPackage, inventoryCount: Number(e.target.value) })}
                                  />
+                               </div>
+                            </div>
+
+                            <div className="space-y-4 bg-slate-50 p-6 rounded-3xl border border-slate-100/50">
+                               <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-900 mb-2">Included Services</h4>
+                               <div className="grid grid-cols-2 gap-3">
+                                 {['Visa', 'Ticket', 'Hotel', 'Accommodation', 'Transport', 'Meals'].map(service => (
+                                   <label key={service} className="flex items-center space-x-3 cursor-pointer group">
+                                     <div className={cn(
+                                       "w-5 h-5 rounded-lg border flex items-center justify-center transition-colors",
+                                       currentPackage.includedServices?.includes(service) ? "bg-orange-500 border-orange-500" : "bg-white border-slate-200 group-hover:border-orange-300"
+                                     )}>
+                                       {currentPackage.includedServices?.includes(service) && <CheckCircle2 size={12} className="text-white" />}
+                                     </div>
+                                     <span className="text-xs font-bold text-slate-700">{service}</span>
+                                     <input 
+                                       type="checkbox"
+                                       className="hidden"
+                                       checked={currentPackage.includedServices?.includes(service) || false}
+                                       onChange={(e) => {
+                                         const services = currentPackage.includedServices || [];
+                                         if (e.target.checked) {
+                                           setCurrentPackage({ ...currentPackage, includedServices: [...services, service] });
+                                         } else {
+                                           setCurrentPackage({ ...currentPackage, includedServices: services.filter(s => s !== service) });
+                                         }
+                                       }}
+                                     />
+                                   </label>
+                                 ))}
                                </div>
                             </div>
 
@@ -2838,7 +2881,7 @@ export default function Admin() {
                        <div className="space-y-2">
                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                              <FileText size={12} className="mr-2 text-orange-500" />
-                             Detailed Narrative Description
+                             Package Description
                           </label>
                           <textarea 
                             rows={8}
@@ -3145,7 +3188,7 @@ export default function Admin() {
                    )}
                  
 
-                    {editorTab === 'expopasses' && currentPackage && currentPackage.type === 'expo' && (
+                    {editorTab === 'expopasses' && currentPackage && (
                       <motion.div
                         key="expopasses"
                         initial={{ opacity: 0, y: 10 }}
@@ -3158,9 +3201,9 @@ export default function Admin() {
                             <div>
                               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                                  <Sparkles size={12} className="mr-2 text-orange-500" />
-                                 Custom Expo Passes & Entrance Cards
+                                 Package Tiers & Custom Passes
                               </label>
-                              <p className="text-xs text-slate-400 font-medium">Create distinct pass tiers (e.g. Exhibitor Pass, Visitor Card, VIP Delegate) for attendees.</p>
+                              <p className="text-xs text-slate-400 font-medium">Create distinct options or tiers (e.g. Economy Pack, VIP Access) with their own cost.</p>
                             </div>
                             <button
                               type="button"
@@ -3180,7 +3223,7 @@ export default function Admin() {
                               className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-orange-500 transition-all flex items-center gap-1.5 shadow-sm shrink-0 self-start sm:self-center cursor-pointer"
                             >
                               <Plus size={12} />
-                              <span>Create Pass Card</span>
+                              <span>Create Tier Option</span>
                             </button>
                           </div>
 
@@ -3715,14 +3758,13 @@ export default function Admin() {
                               <p className="text-[10px] text-slate-400 font-medium">Critical travel document</p>
                             </div>
                             {selectedBooking.passportUrl || users.find(u => u.uid === selectedBooking.userId)?.passportCopyUrl ? (
-                              <a 
-                                href={selectedBooking.passportUrl || users.find(u => u.uid === selectedBooking.userId)?.passportCopyUrl} 
-                                target="_blank" 
+                              <button 
+                                onClick={() => setViewingDocument({ url: selectedBooking.passportUrl || users.find(u => u.uid === selectedBooking.userId)?.passportCopyUrl || '', title: 'Passport Document' })} 
                                 className="flex items-center space-x-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all font-bold text-[10px] uppercase tracking-widest"
                               >
                                 <span>View Document</span>
                                 <ChevronRight size={14} />
-                              </a>
+                              </button>
                             ) : (
                               <div className="flex items-center space-x-2 px-4 py-2 bg-rose-50 text-rose-500 rounded-xl font-bold text-[10px] uppercase tracking-widest">
                                 <span>No Document</span>
@@ -3763,14 +3805,13 @@ export default function Admin() {
                               <p className="text-[10px] text-slate-400 font-medium">Verification layer secondary</p>
                             </div>
                             {selectedBooking.idCardUrl || users.find(u => u.uid === selectedBooking.userId)?.idCardUrl ? (
-                              <a 
-                                href={selectedBooking.idCardUrl || users.find(u => u.uid === selectedBooking.userId)?.idCardUrl} 
-                                target="_blank" 
+                              <button 
+                                onClick={() => setViewingDocument({ url: selectedBooking.idCardUrl || users.find(u => u.uid === selectedBooking.userId)?.idCardUrl || '', title: 'ID Card Document' })} 
                                 className="flex items-center space-x-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all font-bold text-[10px] uppercase tracking-widest"
                               >
                                 <span>View Document</span>
                                 <ChevronRight size={14} />
-                              </a>
+                              </button>
                             ) : (
                               <div className="flex items-center space-x-2 px-4 py-2 bg-rose-50 text-rose-500 rounded-xl font-bold text-[10px] uppercase tracking-widest">
                                 <span>No Document</span>
@@ -3800,6 +3841,53 @@ export default function Admin() {
                           <input type="file" id="admin-idcard-upload" className="hidden" onChange={(e) => handleAdminDocUpload(e, 'idCard')} />
                         </div>
                       </div>
+                      
+                      {/* Education Degree */}
+                      <div className="relative group">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-[2rem] blur opacity-10 group-hover:opacity-20 transition duration-1000"></div>
+                        <div className="relative p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm">
+                          <div className="flex justify-between items-center mb-6">
+                            <div>
+                              <p className="text-xs font-bold text-slate-900 uppercase">Education Degree</p>
+                              <p className="text-[10px] text-slate-400 font-medium">Academic qualifications</p>
+                            </div>
+                            {selectedBooking.educationDegreeUrl || users.find(u => u.uid === selectedBooking.userId)?.educationDegreeUrl ? (
+                              <button 
+                                onClick={() => setViewingDocument({ url: selectedBooking.educationDegreeUrl || users.find(u => u.uid === selectedBooking.userId)?.educationDegreeUrl || '', title: 'Education Degree Document' })} 
+                                className="flex items-center space-x-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all font-bold text-[10px] uppercase tracking-widest"
+                              >
+                                <span>View Document</span>
+                                <ChevronRight size={14} />
+                              </button>
+                            ) : (
+                              <div className="flex items-center space-x-2 px-4 py-2 bg-rose-50 text-rose-500 rounded-xl font-bold text-[10px] uppercase tracking-widest">
+                                <span>No Document</span>
+                                <X size={14} />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <button 
+                            disabled={isUploadingDoc === 'educationDegree'}
+                            onClick={() => document.getElementById('admin-education-degree-upload')?.click()}
+                            className="w-full flex items-center justify-center space-x-2 py-4 bg-slate-50 text-slate-400 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-orange-50 hover:text-orange-500 transition-all border border-dashed border-slate-200"
+                          >
+                            {isUploadingDoc === 'educationDegree' ? <RotateCcw size={14} className="animate-spin" /> : <Upload size={14} />}
+                            <span>{selectedBooking.educationDegreeUrl ? 'REPLACE IN DOCUMENT' : 'INITIAL OVERRIDE'}</span>
+                          </button>
+                          {isUploadingDoc === 'educationDegree' && (
+                            <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: '100%' }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                                className="h-full bg-orange-500"
+                              />
+                            </div>
+                          )}
+                          <input type="file" id="admin-education-degree-upload" className="hidden" onChange={(e) => handleAdminDocUpload(e, 'educationDegree')} />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3816,6 +3904,59 @@ export default function Admin() {
                  >
                    Intelligence Verified
                  </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {viewingDocument && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              onClick={() => setViewingDocument(null)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-5xl bg-white rounded-[2rem] shadow-2xl flex flex-col overflow-hidden max-h-full"
+            >
+              <div className="flex items-center justify-between p-6 bg-slate-50 border-b border-slate-100 shrink-0">
+                <div className="flex items-center space-x-3">
+                  <FileText className="text-orange-500" size={24} />
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">{viewingDocument.title}</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Secure Document Viewer</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <a 
+                    href={viewingDocument.url}
+                    target="_blank"
+                    download
+                    className="p-3 bg-white text-slate-600 rounded-xl hover:bg-orange-50 hover:text-orange-500 transition-colors border border-slate-200"
+                    title="Download Document"
+                  >
+                    <Download size={18} />
+                  </a>
+                  <button 
+                    onClick={() => setViewingDocument(null)}
+                    className="p-3 bg-white text-slate-600 rounded-xl hover:bg-rose-50 hover:text-rose-500 transition-colors border border-slate-200"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex-1 bg-slate-100 overflow-hidden flex items-center justify-center p-4 relative min-h-[500px]">
+                <iframe 
+                  src={`${viewingDocument.url}#view=FitH`} 
+                  className="w-full h-full rounded-xl bg-white shadow-inner"
+                  title="Document Preview"
+                />
               </div>
             </motion.div>
           </div>

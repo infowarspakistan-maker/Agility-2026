@@ -12,7 +12,7 @@ export const db = (firebaseConfig as any).firestoreDatabaseId
   : getFirestore(app);
 
 export const auth = getAuth(app);
-export const storage = getStorage(app);
+export const storage = getStorage(app, "gs://graceful-byway-472118-m5.firebasestorage.app");
 
 export enum OperationType {
   CREATE = 'create',

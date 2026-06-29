@@ -153,6 +153,52 @@ ${packagesContext}`;
     }
   });
 
+  // SEO AI Content Generator Endpoint
+  app.post("/api/ai/seo-generate", async (req, res) => {
+    try {
+      const { topic, type, wordCount = 1000 } = req.body;
+      
+      if (!topic) {
+        return res.status(400).json({ error: "Topic is required" });
+      }
+
+      const prompt = `You are an expert SEO Specialist, Content Strategist, and AI Copywriter. Your task is to generate high-quality web content following strict topical mapping, semantic optimization, and exact length constraints.
+
+Task: Generate optimized SEO content for a ${type} page focused on the primary keyword/topic: "${topic}".
+
+STRICT INSTRUCTIONS:
+1. Prompt Engineering for Topical Authority: Start the body content with a structured outline based on topical maps related to the core topic. Act as a cluster page and include natural sub-topics.
+2. Semantic Content Writing: Write the content including closely related entities, LSI (Latent Semantic Indexing) terms, and semantic keywords to achieve a high relevance score.
+3. Length Requirements: The body content MUST meet or exceed the specific word count target of exactly ${wordCount} words. This is a hard requirement. Expand thoroughly on each sub-topic.
+4. On-Page Formatting: Generate an optimized H1 Heading (under 70 characters), a Title Tag (50-60 characters, containing the primary keyword), and a Meta Description (130-150 characters, persuasive, includes CTA and keyword).
+
+Output a JSON response with the following structure exactly:
+{
+  "titleTag": "string",
+  "metaDescription": "string",
+  "h1Heading": "string",
+  "content": "string (Rich markdown with H2/H3/H4 headings, paragraphs, and lists)"
+}`;
+
+      const response = await generateContentWithFallback({
+        model: "gemini-3.5-pro",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.7
+        }
+      });
+
+      if (!response.text) throw new Error("No response generated.");
+      
+      const jsonResponse = JSON.parse(response.text);
+      res.json({ success: true, data: jsonResponse });
+    } catch (err: any) {
+      console.error("SEO Generator Error:", err);
+      res.status(500).json({ error: "Failed to generate SEO content: " + err.message });
+    }
+  });
+
   // AI Passport Extraction Endpoint
   app.post("/api/ai/extract-passport", async (req, res) => {
     const { base64Image, mimeType } = req.body;

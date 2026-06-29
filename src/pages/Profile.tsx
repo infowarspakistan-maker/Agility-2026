@@ -26,6 +26,7 @@ export default function Profile() {
   const [visaRequests, setVisaRequests] = useState<VisaRequest[]>([]);
   const [isUploadingPassport, setIsUploadingPassport] = useState(false);
   const [isUploadingID, setIsUploadingID] = useState(false);
+  const [isUploadingEducationDegree, setIsUploadingEducationDegree] = useState(false);
   const [isRequestingVisa, setIsRequestingVisa] = useState(false);
   const [visaType, setVisaType] = useState('Umrah Visa');
   const [isEditing, setIsEditing] = useState(false);
@@ -370,7 +371,7 @@ export default function Profile() {
     try {
       let downloadURL = '';
       try {
-        const storageRef = ref(storage, `passports/${auth.currentUser.uid}-${Date.now()}`);
+        const storageRef = ref(storage, `clients/${auth.currentUser.uid}/documents/passport-${Date.now()}`);
         const snapshot = await uploadBytes(storageRef, file);
         downloadURL = await getDownloadURL(snapshot.ref);
       } catch (storageError) {
@@ -399,7 +400,7 @@ export default function Profile() {
     try {
       let downloadURL = '';
       try {
-        const storageRef = ref(storage, `id_cards/${auth.currentUser.uid}-${Date.now()}`);
+        const storageRef = ref(storage, `clients/${auth.currentUser.uid}/documents/idcard-${Date.now()}`);
         const snapshot = await uploadBytes(storageRef, file);
         downloadURL = await getDownloadURL(snapshot.ref);
       } catch (storageError) {
@@ -417,6 +418,35 @@ export default function Profile() {
       toast.error('Failed to upload ID card');
     } finally {
       setIsUploadingID(false);
+    }
+  };
+
+  const handleEducationDegreeUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+
+    setIsUploadingEducationDegree(true);
+    try {
+      let downloadURL = '';
+      try {
+        const storageRef = ref(storage, `clients/${auth.currentUser.uid}/documents/education_degree-${Date.now()}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        downloadURL = await getDownloadURL(snapshot.ref);
+      } catch (storageError) {
+        console.warn("Firebase Storage failed, trying server-side upload fallback:", storageError);
+        downloadURL = await uploadFileToBackend(file);
+      }
+      
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, { educationDegreeUrl: downloadURL });
+      
+      setProfile(prev => prev ? { ...prev, educationDegreeUrl: downloadURL } : null);
+      toast.success('Education degree uploaded successfully!');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to upload education degree');
+    } finally {
+      setIsUploadingEducationDegree(false);
     }
   };
 
@@ -719,6 +749,43 @@ export default function Profile() {
                        className="hidden" 
                        accept="image/*,.pdf" 
                        onChange={handleIDCardUpload} 
+                     />
+                  </div>
+                  <div className="relative space-y-2">
+                     <button 
+                       disabled={isUploadingEducationDegree}
+                       onClick={() => document.getElementById('education-upload')?.click()}
+                       className="w-full flex justify-between items-center p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-all group disabled:opacity-50"
+                     >
+                        <div className="flex items-center space-x-3">
+                           <FileText size={18} className="text-orange-400" />
+                           <span className="text-sm font-medium">{profile?.educationDegreeUrl ? 'Update Education Degree' : 'Upload Education Degree'}</span>
+                        </div>
+                        {isUploadingEducationDegree ? (
+                          <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                        ) : profile?.educationDegreeUrl ? (
+                          <CheckCircle2 size={16} className="text-emerald-500" />
+                        ) : (
+                          <Upload size={16} className="text-white/20 group-hover:text-white" />
+                        )}
+                     </button>
+                     {profile?.educationDegreeUrl && (
+                       <a 
+                         href={profile.educationDegreeUrl} 
+                         target="_blank" 
+                         rel="noopener noreferrer"
+                         className="flex items-center space-x-2 text-[10px] text-orange-400 font-bold uppercase tracking-widest pl-4 hover:text-white transition-colors"
+                       >
+                         <Globe size={12} />
+                         <span>View Education Degree</span>
+                       </a>
+                     )}
+                     <input 
+                       id="education-upload" 
+                       type="file" 
+                       className="hidden" 
+                       accept="image/*,.pdf" 
+                       onChange={handleEducationDegreeUpload} 
                      />
                   </div>
                   <button 

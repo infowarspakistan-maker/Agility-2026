@@ -8,6 +8,7 @@ import { ToastProvider } from '@/src/components/layout/ToastContext';
 
 import Navbar from '@/src/components/layout/Navbar';
 import Footer from '@/src/components/layout/Footer';
+import MobileBottomNav from '@/src/components/layout/MobileBottomNav';
 import VisaConsultant from '@/src/components/VisaConsultant';
 import SupportChat from '@/src/components/SupportChat';
 import Home from '@/src/pages/Home';
@@ -18,6 +19,9 @@ import Profile from '@/src/pages/Profile';
 import Admin from '@/src/pages/Admin';
 import FAQ from '@/src/pages/FAQ';
 import Contact from '@/src/pages/Contact';
+import Blog from '@/src/pages/Blog';
+import News from '@/src/pages/News';
+import BlogPost from '@/src/pages/BlogPost';
 import ScrollToTop from '@/src/components/ScrollToTop';
 import SEOHandler from '@/src/components/SEOHandler';
 
@@ -98,6 +102,9 @@ export default function App() {
               <Route path="/packages/:type" element={<Packages />} />
               <Route path="/package/:id" element={<PackageDetails />} />
               <Route path="/faq" element={<FAQ />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:id" element={<BlogPost />} />
+              <Route path="/news" element={<News />} />
               <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
               <Route path="/admin" element={profile?.role === 'admin' ? <Admin /> : <Navigate to="/" />} />
               <Route path="/login" element={<Auth />} />
@@ -110,6 +117,7 @@ export default function App() {
           <div className="mt-auto">
             <Footer />
           </div>
+          <MobileBottomNav />
           <VisaConsultant />
           <SupportChat />
         </div>

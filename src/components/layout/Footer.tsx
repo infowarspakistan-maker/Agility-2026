@@ -40,6 +40,8 @@ export default function Footer() {
               <li><Link to="/packages/haj" className="hover:text-orange-500 transition-colors">Haj 2026 Registry</Link></li>
               <li><Link to="/packages/domestic-group" className="hover:text-orange-500 transition-colors">Northern Pakistan</Link></li>
               <li><Link to="/packages/visa" className="hover:text-orange-500 transition-colors">Visa Services</Link></li>
+              <li><Link to="/blog" className="hover:text-orange-500 transition-colors">Blogs</Link></li>
+              <li><Link to="/news" className="hover:text-orange-500 transition-colors">News</Link></li>
             </ul>
           </div>
 

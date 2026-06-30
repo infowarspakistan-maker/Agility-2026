@@ -96,6 +96,15 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Blog Posts
+    match /blogs {
+      allow read: if true;
+      match /{blogId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
     // Slides
     match /slides/{slideId} {
       allow read: if true;

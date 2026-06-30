@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Plane, Ship, Map, ShieldCheck, User, Menu, X, Landmark, Briefcase, Settings, GraduationCap } from 'lucide-react';
+import { Plane, Ship, Map, ShieldCheck, User, Menu, X, Landmark, Briefcase, Settings, GraduationCap, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +50,7 @@ export default function Navbar() {
     { name: 'EXPO', href: '/packages/expo', icon: Briefcase },
     { name: 'Study Abroad', href: '/packages/study-abroad', icon: GraduationCap },
     { name: 'VISA Services', href: '/packages/visa', icon: ShieldCheck },
+    { name: 'News', href: '/news', icon: BookOpen },
   ];
 
   return (
@@ -66,7 +67,7 @@ export default function Navbar() {
               <Plane className="text-white w-6 h-6" />
             </div>
             <span className={cn(
-              "text-2xl font-bold tracking-tight",
+              "text-xl sm:text-2xl font-bold tracking-tight",
               showTransparent ? "text-white drop-shadow-md" : "text-slate-900"
             )}>
               Agility <span className="text-orange-500">Travels</span>
@@ -123,6 +124,7 @@ export default function Navbar() {
             <LanguageSwitcher light={showTransparent} />
             <button
               onClick={() => setIsOpen(!isOpen)}
+              aria-label={isOpen ? "Close menu" : "Open menu"}
               className={cn(
                 "p-2 rounded-md",
                 showTransparent ? "text-white" : "text-slate-600"

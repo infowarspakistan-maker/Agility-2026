@@ -305,7 +305,7 @@ export default function Home() {
                     hidden: { opacity: 0, y: 30, scale: 0.96 },
                     visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
                   }}
-                  className="text-4xl md:text-7xl lg:text-8xl font-black text-white mb-6 leading-[0.95] tracking-tight max-w-5xl"
+                  className="text-3xl md:text-7xl lg:text-8xl font-black text-white mb-6 leading-[0.95] tracking-tight max-w-5xl"
                 >
                   {activeSlides[currentSlide]?.title}
                 </motion.h1>
@@ -726,6 +726,9 @@ export default function Home() {
                   viewport={{ once: true }}
                   transition={{ delay: idx * 0.05 }}
                   onClick={() => navigate(cat.href)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Explore ${cat.title}`}
                   className={cn(
                     "group relative overflow-hidden rounded-[2rem] h-80 cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br",
                     cat.gradient
@@ -739,11 +742,13 @@ export default function Home() {
                       referrerPolicy="no-referrer" 
                       alt={cat.title}
                       loading="lazy"
+                      width="600"
+                      height="320"
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/30 to-transparent group-hover:via-slate-950/20 transition-all duration-300" />
                   
-                  <div className="absolute bottom-6 left-6 right-6">
+                  <div className="absolute bottom-6 left-6 right-6" aria-hidden="true">
                     <div className={cn("inline-flex p-3.5 rounded-2xl text-white mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300", cat.color)}>
                       <cat.icon size={24} />
                     </div>

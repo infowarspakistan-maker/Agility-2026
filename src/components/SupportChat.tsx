@@ -199,7 +199,7 @@ export default function SupportChat() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-8 left-8 z-[100] p-5 bg-orange-500 text-white rounded-full shadow-2xl border-4 border-white group transition-all"
+        className="fixed bottom-24 lg:bottom-8 left-8 z-[100] p-5 bg-orange-500 text-white rounded-full shadow-2xl border-4 border-white group transition-all"
         aria-label="Open support chat"
       >
         <div className="relative">
@@ -218,7 +218,7 @@ export default function SupportChat() {
             initial={{ opacity: 0, y: 100, scale: 0.8, x: -50 }}
             animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
             exit={{ opacity: 0, y: 100, scale: 0.8, x: -50 }}
-            className="fixed bottom-28 left-8 z-[100] w-[420px] max-w-[calc(100vw-2rem)] h-[620px] max-h-[calc(100vh-10rem)] bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col"
+            className="fixed bottom-44 lg:bottom-28 left-8 z-[100] w-[420px] max-w-[calc(100vw-2rem)] h-[620px] max-h-[calc(100vh-10rem)] bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col"
           >
             {/* Header */}
             <div className="p-6 bg-orange-500 text-white shrink-0 relative overflow-hidden">

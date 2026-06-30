@@ -146,3 +146,15 @@ export interface HeroSlide {
   order?: number;
 }
 
+export interface BlogPost {
+  id: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  date: string;
+  readTime: string;
+  category: string;
+  imageUrl?: string;
+  type: 'blog' | 'news';
+}
+

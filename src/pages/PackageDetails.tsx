@@ -6,7 +6,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/src/lib/firebase';
 import { TravelPackage, Booking, Passenger, ExpoPass } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar, FileText, Download, Info } from 'lucide-react';
+import { MapPin, Clock, Users, ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, CreditCard, ChevronRight, Landmark, ScanFace, Sparkles, Loader2, Upload, User, Calendar, FileText, Download, Info, Facebook, MessageCircle } from 'lucide-react';
 import { cn, formatCurrency, optimizeImageUrl, compressImage, ensureItineraryArray } from '@/src/lib/utils';
 import { extractPassengerFromPassport } from '@/src/services/aiService';
 import { useToast } from '@/src/components/layout/ToastContext';
@@ -590,9 +590,9 @@ export default function PackageDetails() {
         contactEmail: contactInfo.email,
         contactPhone: contactInfo.phone,
         contactAddress: contactInfo.address,
-        passportUrl: passportUrl || undefined,
-        idCardUrl: idCardUrl || undefined,
-        educationDegreeUrl: educationDegreeUrl || undefined,
+        ...(passportUrl ? { passportUrl } : {}),
+        ...(idCardUrl ? { idCardUrl } : {}),
+        ...(educationDegreeUrl ? { educationDegreeUrl } : {}),
         notes: (driveFileIds.length > 0 ? `Uploaded ${driveFileIds.length} document(s) to Google Drive. ` : '') + 
                (pkg.type === 'expo' && selectedExpoPass ? `Selected Pass: ${selectedExpoPass.title} (+${formatCurrency(selectedExpoPass.price)}).` : ''),
         preferredStartDate: startDate ? startDate.toISOString().split('T')[0] : '',
@@ -646,7 +646,7 @@ export default function PackageDetails() {
         Back to Results
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
         {/* Left Column: Content */}
         <div className="lg:col-span-8">
            <div className="mb-8">
@@ -655,7 +655,29 @@ export default function PackageDetails() {
                  <div className="w-1 h-1 bg-slate-200 rounded-full" />
                  <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-slate-400">{pkg.category}</span>
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-6">{pkg.title}</h1>
+              <h1 className="text-3xl md:text-5xl font-bold mb-6">{pkg.title}</h1>
+              
+              <div className="flex items-center gap-3 mb-8">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Share this package:</span>
+                <a 
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-8 h-8 flex items-center justify-center bg-[#1877F2] text-white rounded-full hover:scale-110 transition-transform shadow-md"
+                  title="Share on Facebook"
+                >
+                  <Facebook size={14} />
+                </a>
+                <a 
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(pkg.title + " - Check this out: " + window.location.href)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-8 h-8 flex items-center justify-center bg-[#25D366] text-white rounded-full hover:scale-110 transition-transform shadow-md"
+                  title="Share on WhatsApp"
+                >
+                  <MessageCircle size={14} />
+                </a>
+              </div>
               
               <div className="flex flex-wrap gap-8 items-center text-sm text-slate-500 font-semibold mb-8">
                 <div className="flex items-center">
@@ -701,7 +723,7 @@ export default function PackageDetails() {
                >
                  {/* Interactive Image Gallery */}
                  <div className="space-y-4 mb-8">
-                   <div className="rounded-[2rem] overflow-hidden h-[420px] bg-slate-100 relative group shadow-sm border border-slate-100/50">
+                   <div className="rounded-[2rem] overflow-hidden h-[300px] md:h-[420px] bg-slate-100 relative group shadow-sm border border-slate-100/50">
                       <img 
                         src={optimizeImageUrl(pkg.images?.[activeImageIdx] || pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 1200, 80)} 
                         alt={`${pkg.title || 'Package'} - View ${activeImageIdx + 1}`} 
@@ -765,7 +787,7 @@ export default function PackageDetails() {
                     {pkg.includedServices && pkg.includedServices.length > 0 && (
                       <div className="mb-8">
                         <h3 className="text-2xl font-bold mb-4">Included Services</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {pkg.includedServices.map((service, idx) => (
                             <div key={idx} className="flex items-center space-x-3 bg-emerald-50 text-emerald-700 px-4 py-3 rounded-2xl font-bold text-sm border border-emerald-100">
                               <CheckCircle2 size={18} className="text-emerald-500" />
@@ -1613,7 +1635,7 @@ export default function PackageDetails() {
              </div>
 
              <a 
-               href={`https://wa.me/92315456263?text=${encodeURIComponent(`Hi, I would like to inquire about the package: ${pkg.title}`)}`}
+               href={`https://wa.me/923154256263?text=${encodeURIComponent(`Hi, I would like to inquire about the package: ${pkg.title}`)}`}
                target="_blank"
                rel="noopener noreferrer"
                className="w-full py-4 mb-8 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-xl shadow-green-500/20"

@@ -166,7 +166,7 @@ export default function FAQ() {
            <h3 className="text-2xl font-bold mb-4">Still have questions?</h3>
            <p className="text-slate-400 mb-8 max-w-sm mx-auto text-sm">Our travel experts are available on WhatsApp 24/7 to help you with your specific queries.</p>
            <a 
-            href="https://wa.me/923205004446" 
+            href="https://wa.me/923154256263" 
             target="_blank" 
             rel="noopener noreferrer"
             className="inline-flex items-center space-x-2 bg-orange-500 text-white px-8 py-4 rounded-2xl font-bold hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/20"

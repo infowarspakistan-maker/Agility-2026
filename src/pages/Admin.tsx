@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
+import RichTextEditor from '@/src/components/RichTextEditor';
 import { auth, db, storage, handleFirestoreError, OperationType } from '@/src/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, serverTimestamp, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
-import { Booking, UserProfile, TravelPackage, PackageType, Review, VisaRequest, ChatMessage, ChatSession, HeroSlide, ExpoPass } from '@/src/types';
+import { Booking, UserProfile, TravelPackage, PackageType, Review, VisaRequest, ChatMessage, ChatSession, HeroSlide, ExpoPass, BlogPost } from '@/src/types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Filter, Database, Users, TrendingUp, Package, 
@@ -10,7 +11,7 @@ import {
   Plus, Trash2, Edit3, Save, LayoutDashboard, Calendar, 
   Tag, Info, Image as ImageIcon, MapPin, Layers, ShieldCheck,
   Upload, X, FileText, MessageSquare, Star, AlertTriangle, ChevronRight,
-  Activity, Cpu, Zap, Radio, Sparkles
+  Activity, Cpu, Zap, Radio, Sparkles, BookOpen, Download
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn, formatCurrency, ensureItineraryArray } from '@/src/lib/utils';
@@ -31,7 +32,7 @@ import { useToast } from '@/src/components/layout/ToastContext';
 
 import SEOContentGenerator from '@/src/components/SEOContentGenerator';
 
-type TabType = 'overview' | 'bookings' | 'packages' | 'users' | 'visas' | 'reviews' | 'chat' | 'sheets' | 'sliders' | 'seo';
+type TabType = 'overview' | 'bookings' | 'packages' | 'users' | 'visas' | 'reviews' | 'chat' | 'sheets' | 'sliders' | 'seo' | 'blogs';
 
 export default function Admin() {
   const toast = useToast();
@@ -60,6 +61,7 @@ export default function Admin() {
   const [chatInput, setChatInput] = useState('');
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
+  const [blogs, setBlogs] = useState<BlogPost[]>([]);
 
   // Define loadData as it's called elsewhere, even if onSnapshot handles most things
   const loadData = async () => {
@@ -98,7 +100,7 @@ export default function Admin() {
     }
   };
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [isUploadingDoc, setIsUploadingDoc] = useState<'passport' | 'idCard' | null>(null);
+  const [isUploadingDoc, setIsUploadingDoc] = useState<'passport' | 'idCard' | 'educationDegree' | null>(null);
   const [pulseEvents, setPulseEvents] = useState<any[]>([]);
   const [isCreatingVisa, setIsCreatingVisa] = useState(false);
   const [generatingItinerary, setGeneratingItinerary] = useState<string | null>(null);
@@ -138,6 +140,9 @@ export default function Admin() {
   const [currentSlideItem, setCurrentSlideItem] = useState<Partial<HeroSlide> | null>(null);
   const [isUploadingSlideImage, setIsUploadingSlideImage] = useState(false);
   const [viewingDocument, setViewingDocument] = useState<{ url: string, title: string } | null>(null);
+  
+  const [isEditingBlog, setIsEditingBlog] = useState(false);
+  const [currentBlog, setCurrentBlog] = useState<Partial<BlogPost> | null>(null);
 
   // Real-time synchronization
   useEffect(() => {
@@ -223,6 +228,13 @@ export default function Admin() {
       handleFirestoreError(error, OperationType.GET, 'slides');
     });
 
+    // 10. Blogs Sync
+    const unsubBlogs = onSnapshot(collection(db, 'blogs'), (snap) => {
+      setBlogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as BlogPost[]);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'blogs');
+    });
+
     setSheetsAuthorized(!!getGoogleAccessToken());
 
     return () => {
@@ -235,6 +247,7 @@ export default function Admin() {
       unsubChats();
       unsubSheets();
       unsubSlides();
+      unsubBlogs();
     };
   }, []);
 
@@ -439,6 +452,23 @@ export default function Admin() {
       loadData();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleSaveBlog = async () => {
+    if (!currentBlog) return;
+    try {
+      if (currentBlog.id) {
+        await updateDoc(doc(db, 'blogs', currentBlog.id), currentBlog as any);
+      } else {
+        await addDoc(collection(db, 'blogs'), currentBlog);
+      }
+      setIsEditingBlog(false);
+      setCurrentBlog(null);
+      toast.success("Blog saved successfully!");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to save blog.");
     }
   };
 
@@ -1058,6 +1088,19 @@ export default function Admin() {
                 <span>{tab.label}</span>
               </button>
             ))}
+            
+            {/* Always visible blog button */}
+            <button
+              onClick={() => setActiveTab('blogs')}
+              type="button"
+              className={cn(
+                "flex items-center space-x-2 px-5 py-3 rounded-2xl font-bold text-xs transition-style transition-all flex-grow md:flex-grow-0 justify-center",
+                activeTab === 'blogs' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              <BookOpen size={13} />
+              <span>News & Blogs Manager</span>
+            </button>
           </div>
 
           {/* Swallow original visual tabs rendering block */}
@@ -1073,7 +1116,8 @@ export default function Admin() {
            { id: 'reviews', icon: Star, label: 'Reviews' },
            { id: 'users', icon: Users, label: 'Users' },
            { id: 'chat', icon: MessageSquare, label: 'Support Chat' },
-           { id: 'sheets', icon: FileText, label: 'Google Sheets' }
+           { id: 'sheets', icon: FileText, label: 'Google Sheets' },
+           { id: 'blogs', icon: BookOpen, label: 'Blogs' }
          ].map(tab => (
            <button
              key={tab.id}
@@ -2094,6 +2138,52 @@ export default function Admin() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'blogs' && (
+            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
+               <div className="p-10 border-b border-slate-50 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-2xl font-bold">News & Blog Manager</h3>
+                    <p className="text-sm text-slate-400 font-medium">Manage and publish news and blog content.</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                        setCurrentBlog({ title: '', excerpt: '', content: '', date: new Date().toLocaleDateString(), readTime: '5 min read', category: 'General' });
+                        setIsEditingBlog(true);
+                    }}
+                    className="flex items-center space-x-2 bg-orange-500 text-white px-6 py-4 rounded-2xl font-bold text-sm hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"
+                  >
+                    <Plus size={18} />
+                    <span>Create Blog</span>
+                  </button>
+               </div>
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left">
+                    <thead className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                       <tr>
+                          <th className="px-10 py-6">Title</th>
+                          <th className="px-10 py-6">Category</th>
+                          <th className="px-10 py-6">Date</th>
+                          <th className="px-10 py-6">Actions</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                       {blogs.map(blog => (
+                         <tr key={blog.id}>
+                            <td className="px-10 py-8 font-bold text-slate-900">{blog.title}</td>
+                            <td className="px-10 py-8 text-xs font-bold text-slate-500">{blog.category}</td>
+                            <td className="px-10 py-8 text-xs font-bold text-slate-400">{blog.date}</td>
+                            <td className="px-10 py-8 flex items-center">
+                               <button onClick={() => { setCurrentBlog(blog); setIsEditingBlog(true); }} className="text-slate-400 hover:text-orange-500 mr-4"><Edit3 size={16} /></button>
+                               <button onClick={async () => { if(confirm('Are you sure?')) await deleteDoc(doc(db, 'blogs', blog.id)); }} className="text-slate-400 hover:text-rose-500"><Trash2 size={16} /></button>
+                            </td>
+                         </tr>
+                       ))}
+                    </tbody>
+                 </table>
+               </div>
             </div>
           )}
 
@@ -3991,6 +4081,30 @@ export default function Admin() {
         )}
       </AnimatePresence>
     </div>
+
+    {isEditingBlog && currentBlog && (
+       <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] p-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+             <h2 className="text-2xl font-bold mb-6">{currentBlog.id ? 'Edit Blog' : 'Create Blog'}</h2>
+             <div className="space-y-4">
+               <input type="text" placeholder="Title" value={currentBlog.title || ''} onChange={e => setCurrentBlog({...currentBlog, title: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border" />
+               <input type="text" placeholder="Excerpt" value={currentBlog.excerpt || ''} onChange={e => setCurrentBlog({...currentBlog, excerpt: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border" />
+               <input type="text" placeholder="Category" value={currentBlog.category || ''} onChange={e => setCurrentBlog({...currentBlog, category: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border" />
+               <select value={currentBlog.type || 'blog'} onChange={e => setCurrentBlog({...currentBlog, type: e.target.value as 'blog' | 'news'})} className="w-full p-4 bg-slate-50 rounded-2xl border">
+                 <option value="blog">Blog</option>
+                 <option value="news">News</option>
+               </select>
+               <div className="h-60 mb-10">
+                 <RichTextEditor value={currentBlog.content || ''} onChange={value => setCurrentBlog({...currentBlog, content: value})} className="h-full" />
+               </div>
+               <div className="flex gap-4">
+                  <button onClick={() => setIsEditingBlog(false)} className="px-6 py-3 rounded-2xl bg-slate-100 font-bold">Cancel</button>
+                  <button onClick={handleSaveBlog} className="px-6 py-3 rounded-2xl bg-orange-500 text-white font-bold">Save</button>
+               </div>
+             </div>
+          </div>
+       </div>
+    )}
     </div>
     </div>
   );

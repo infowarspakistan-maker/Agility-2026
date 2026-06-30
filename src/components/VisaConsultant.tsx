@@ -81,7 +81,7 @@ export default function VisaConsultant() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-8 right-8 z-[100] p-5 bg-slate-900 text-white rounded-full shadow-2xl border-4 border-white group"
+        className="fixed bottom-24 lg:bottom-8 right-8 z-[100] p-5 bg-slate-900 text-white rounded-full shadow-2xl border-4 border-white group"
       >
         <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000"></div>
         <div className="relative">
@@ -96,7 +96,7 @@ export default function VisaConsultant() {
             initial={{ opacity: 0, y: 100, scale: 0.8, x: 50 }}
             animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
             exit={{ opacity: 0, y: 100, scale: 0.8, x: 50 }}
-            className="fixed bottom-28 right-8 z-[100] w-[450px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-10rem)] bg-white rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col"
+            className="fixed bottom-44 lg:bottom-28 right-8 z-[100] w-[450px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-10rem)] bg-white rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col"
           >
             {/* Header */}
             <div className="p-8 bg-slate-900 text-white shrink-0 relative overflow-hidden">

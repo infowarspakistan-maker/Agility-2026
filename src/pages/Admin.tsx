@@ -458,10 +458,11 @@ export default function Admin() {
   const handleSaveBlog = async () => {
     if (!currentBlog) return;
     try {
+      const blogToSave = { ...currentBlog, type: currentBlog.type || 'blog' };
       if (currentBlog.id) {
-        await updateDoc(doc(db, 'blogs', currentBlog.id), currentBlog as any);
+        await updateDoc(doc(db, 'blogs', currentBlog.id), blogToSave as any);
       } else {
-        await addDoc(collection(db, 'blogs'), currentBlog);
+        await addDoc(collection(db, 'blogs'), blogToSave);
       }
       setIsEditingBlog(false);
       setCurrentBlog(null);
@@ -787,6 +788,38 @@ export default function Admin() {
       console.error(error);
       toast.error("Seeding slider collection failed.");
     }
+  };
+
+  const handleExportCSV = (collectionName: string, data: any[]) => {
+    if (!data.length) {
+      toast.error(`No data to backup for ${collectionName}`);
+      return;
+    }
+    
+    // Create headers
+    const headers = Object.keys(data[0]).filter(key => typeof data[0][key] !== 'object' && !Array.isArray(data[0][key]));
+    
+    // Create rows
+    const rows = data.map(item => 
+      headers.map(header => {
+        const val = item[header];
+        if (typeof val === 'string') {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+      }).join(',')
+    );
+    
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${collectionName}_backup_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success(`${collectionName} backed up successfully!`);
   };
 
   const handleAdminDocUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'passport' | 'idCard' | 'educationDegree') => {
@@ -1548,6 +1581,62 @@ export default function Admin() {
                     </div>
                  </div>
               </div>
+
+              {/* Data Operations - CSV Backup */}
+              <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden mt-12">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50 rounded-full translate-x-1/2 -translate-y-1/2 blur-[80px] pointer-events-none" />
+                <div className="flex items-center space-x-3 mb-8 relative z-10">
+                  <div className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl">
+                    <Database size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-800 tracking-tight">Data Backup & Export</h3>
+                    <p className="text-[11px] text-slate-400 font-medium font-mono">Download CSV snapshots of your database collections.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
+                  <button onClick={() => handleExportCSV('Packages', packages)} className="bg-slate-50 hover:bg-emerald-50 border border-slate-100 hover:border-emerald-200 text-slate-700 hover:text-emerald-700 p-6 rounded-3xl transition-all flex flex-col items-center justify-center space-y-3 group text-center shadow-sm hover:shadow-md">
+                    <div className="p-3 bg-white rounded-2xl shadow-sm text-slate-400 group-hover:text-emerald-500 transition-colors">
+                      <Download size={24} />
+                    </div>
+                    <div>
+                      <div className="font-bold">Packages CSV</div>
+                      <div className="text-[10px] text-slate-400">{packages.length} records</div>
+                    </div>
+                  </button>
+
+                  <button onClick={() => handleExportCSV('Bookings', bookings)} className="bg-slate-50 hover:bg-emerald-50 border border-slate-100 hover:border-emerald-200 text-slate-700 hover:text-emerald-700 p-6 rounded-3xl transition-all flex flex-col items-center justify-center space-y-3 group text-center shadow-sm hover:shadow-md">
+                    <div className="p-3 bg-white rounded-2xl shadow-sm text-slate-400 group-hover:text-emerald-500 transition-colors">
+                      <Download size={24} />
+                    </div>
+                    <div>
+                      <div className="font-bold">Bookings CSV</div>
+                      <div className="text-[10px] text-slate-400">{bookings.length} records</div>
+                    </div>
+                  </button>
+
+                  <button onClick={() => handleExportCSV('Blogs', blogs)} className="bg-slate-50 hover:bg-emerald-50 border border-slate-100 hover:border-emerald-200 text-slate-700 hover:text-emerald-700 p-6 rounded-3xl transition-all flex flex-col items-center justify-center space-y-3 group text-center shadow-sm hover:shadow-md">
+                    <div className="p-3 bg-white rounded-2xl shadow-sm text-slate-400 group-hover:text-emerald-500 transition-colors">
+                      <Download size={24} />
+                    </div>
+                    <div>
+                      <div className="font-bold">Blogs/News CSV</div>
+                      <div className="text-[10px] text-slate-400">{blogs.length} records</div>
+                    </div>
+                  </button>
+
+                  <button onClick={() => handleExportCSV('Visas', visaRequests)} className="bg-slate-50 hover:bg-emerald-50 border border-slate-100 hover:border-emerald-200 text-slate-700 hover:text-emerald-700 p-6 rounded-3xl transition-all flex flex-col items-center justify-center space-y-3 group text-center shadow-sm hover:shadow-md">
+                    <div className="p-3 bg-white rounded-2xl shadow-sm text-slate-400 group-hover:text-emerald-500 transition-colors">
+                      <Download size={24} />
+                    </div>
+                    <div>
+                      <div className="font-bold">Visas CSV</div>
+                      <div className="text-[10px] text-slate-400">{visaRequests.length} records</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -2150,7 +2239,7 @@ export default function Admin() {
                   </div>
                   <button 
                     onClick={() => {
-                        setCurrentBlog({ title: '', excerpt: '', content: '', date: new Date().toLocaleDateString(), readTime: '5 min read', category: 'General' });
+                        setCurrentBlog({ title: '', excerpt: '', content: '', date: new Date().toLocaleDateString(), readTime: '5 min read', category: 'General', type: 'blog' });
                         setIsEditingBlog(true);
                     }}
                     className="flex items-center space-x-2 bg-orange-500 text-white px-6 py-4 rounded-2xl font-bold text-sm hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20"

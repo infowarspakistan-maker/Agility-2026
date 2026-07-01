@@ -81,11 +81,11 @@ export default function VisaConsultant() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-24 lg:bottom-8 right-8 z-[100] p-5 bg-slate-900 text-white rounded-full shadow-2xl border-4 border-white group"
+        className="fixed bottom-20 right-4 lg:bottom-8 lg:right-8 z-[100] p-3 lg:p-5 bg-slate-900 text-white rounded-full shadow-2xl border-[3px] lg:border-4 border-white group"
       >
         <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-1000"></div>
         <div className="relative">
-          {isOpen ? <X size={28} /> : <MessageSquare size={28} />}
+          {isOpen ? <X className="w-5 h-5 lg:w-7 lg:h-7" /> : <MessageSquare className="w-5 h-5 lg:w-7 lg:h-7" />}
         </div>
       </motion.button>
 

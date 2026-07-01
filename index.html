@@ -35,6 +35,29 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#f97316" />
     <link rel="apple-touch-icon" href="/icon-512.jpg" />
+    
+    <!-- Structured Data (JSON-LD) for Search Engines -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "TravelAgency",
+      "name": "Agility Travels",
+      "image": "https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=1200",
+      "@id": "https://agilitytravels.com",
+      "url": "https://agilitytravels.com",
+      "telephone": "+923154256263",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Lahore",
+        "addressLocality": "Lahore",
+        "addressCountry": "PK"
+      },
+      "description": "Premium Umrah, Haj, Corporate Expo, and Adventure tour packages.",
+      "sameAs": [
+        "https://www.facebook.com/agilitytravels"
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

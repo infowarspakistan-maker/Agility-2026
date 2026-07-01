@@ -432,7 +432,7 @@ export default function Packages() {
                   >
                     <div>
                       {/* Image Frame with Floating Badges */}
-                      <div className="relative h-60 overflow-hidden">
+                      <div className="relative aspect-video overflow-hidden">
                         <Link to={`/package/${pkg.id}`} className="block w-full h-full">
                           <img 
                             src={optimizeImageUrl(pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 600, 75)} 

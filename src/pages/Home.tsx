@@ -240,7 +240,7 @@ export default function Home() {
       <section 
         onTouchStart={handleTouchStart} 
         onTouchEnd={handleTouchEnd}
-        className="relative min-h-[92vh] flex items-center justify-center overflow-hidden py-24 md:py-32 select-none"
+        className="relative aspect-video flex items-center justify-center overflow-hidden py-24 md:py-32 select-none"
       >
         {/* Slide Carousel Backgrounds */}
         <div className="absolute inset-0 z-0">
@@ -602,8 +602,8 @@ export default function Home() {
                 className="hidden lg:flex items-center gap-3 bg-slate-950/90 backdrop-blur-lg p-2 rounded-2xl border border-white/15 shadow-2xl w-72 pointer-events-none"
               >
                 <img 
-                  src={optimizeImageUrl(activeSlides[prevSlideIdx].image, 160, 100)} 
-                  className="w-20 h-14 object-cover rounded-xl border border-white/10 flex-shrink-0"
+                  src={optimizeImageUrl(activeSlides[prevSlideIdx].image, 160, 90)} 
+                  className="w-24 aspect-video object-cover rounded-xl border border-white/10 flex-shrink-0"
                   referrerPolicy="no-referrer"
                   alt="Previous Slide Thumbnail"
                 />
@@ -644,8 +644,8 @@ export default function Home() {
                 className="hidden lg:flex items-center gap-3 bg-slate-950/90 backdrop-blur-lg p-2 rounded-2xl border border-white/15 shadow-2xl w-72 pointer-events-none text-right flex-row-reverse"
               >
                 <img 
-                  src={optimizeImageUrl(activeSlides[nextSlideIdx].image, 160, 100)} 
-                  className="w-20 h-14 object-cover rounded-xl border border-white/10 flex-shrink-0"
+                  src={optimizeImageUrl(activeSlides[nextSlideIdx].image, 160, 90)} 
+                  className="w-24 aspect-video object-cover rounded-xl border border-white/10 flex-shrink-0"
                   referrerPolicy="no-referrer"
                   alt="Next Slide Thumbnail"
                 />
@@ -800,7 +800,7 @@ export default function Home() {
                 className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-xl shadow-slate-100/30 group hover:-translate-y-1.5 transition-all duration-300 cursor-pointer flex flex-col justify-between"
               >
                 <div>
-                  <div className="relative h-64 overflow-hidden">
+                  <div className="relative aspect-video overflow-hidden">
                     <img src={optimizeImageUrl(pkg.images?.[0] || 'https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa', 600, 75)} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" loading="lazy" />
                     <div className="absolute top-4 left-4">
                       <span className="px-3 py-1 bg-white/95 backdrop-blur-sm text-emerald-700 text-[10px] font-black rounded-full uppercase tracking-wider shadow-sm border border-emerald-500/10">
@@ -954,7 +954,7 @@ export default function Home() {
                 className="bg-slate-50 border border-slate-100 hover:border-amber-500/20 rounded-[2.5rem] p-8 flex flex-col justify-between cursor-pointer hover:bg-white hover:shadow-xl hover:shadow-amber-500/5 transition-all group"
               >
                 <div className="space-y-5">
-                  <div className="relative h-44 rounded-2xl overflow-hidden bg-slate-900 shadow-sm">
+                  <div className="relative aspect-video rounded-2xl overflow-hidden bg-slate-900 shadow-sm">
                     <img src={optimizeImageUrl(pkg.images?.[0] || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab', 600, 75)} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" referrerPolicy="no-referrer" loading="lazy" />
                     <span className="absolute top-3 right-3 px-2.5 py-1 bg-amber-500 text-white font-mono text-[9px] font-black uppercase rounded-md leading-none shadow-md">
                       {pkg.category.toUpperCase()}
@@ -1126,7 +1126,7 @@ export default function Home() {
                   transition={{ delay: idx * 0.1 }}
                   className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-xl shadow-slate-100/50 group"
                 >
-                  <div className="relative h-64 overflow-hidden">
+                  <div className="relative aspect-video overflow-hidden">
                      <img src={optimizeImageUrl(pkg.images[0], 600, 75)} alt={pkg.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" loading="lazy" />
                      <div className="absolute top-4 left-4">
                        <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-slate-900 text-[10px] font-bold rounded-full uppercase tracking-wider">{pkg.category}</span>

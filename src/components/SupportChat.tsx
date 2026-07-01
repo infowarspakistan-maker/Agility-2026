@@ -199,13 +199,13 @@ export default function SupportChat() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-24 lg:bottom-8 left-8 z-[100] p-5 bg-orange-500 text-white rounded-full shadow-2xl border-4 border-white group transition-all"
+        className="fixed bottom-20 left-4 lg:bottom-8 lg:left-8 z-[100] p-3 lg:p-5 bg-orange-500 text-white rounded-full shadow-2xl border-[3px] lg:border-4 border-white group transition-all"
         aria-label="Open support chat"
       >
         <div className="relative">
-          {isOpen ? <X size={28} /> : <Headset size={28} />}
+          {isOpen ? <X className="w-5 h-5 lg:w-7 lg:h-7" /> : <Headset className="w-5 h-5 lg:w-7 lg:h-7" />}
           {!isOpen && (
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 lg:w-4 lg:h-4 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
           )}
         </div>
       </motion.button>
